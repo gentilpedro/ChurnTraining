@@ -1,0 +1,22 @@
+# Artefatos de modelo gerados pelo treino
+models/*.pkl
+
+# Ambientes virtuais Python
+.venv/
+venv/
+ENV/
+env/
+
+# Byte-code e cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Variáveis de ambiente
+.env
+.env.local
+
+# IDEs e editores
+.vscode/
+.idea/
+*.swp

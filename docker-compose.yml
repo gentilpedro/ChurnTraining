@@ -1,0 +1,9 @@
+services:
+  trainer:
+    build: .
+    container_name: churn-trainer
+    volumes:
+      # O .pkl gerado dentro do container aparece em ./models na sua máquina
+      - ./models:/app/models
+      # Edite o train_model.py e rode de novo sem rebuildar a imagem
+      - ./train_model.py:/app/train_model.py:ro
