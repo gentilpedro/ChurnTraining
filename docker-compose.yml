@@ -5,5 +5,9 @@ services:
     volumes:
       # O .pkl gerado dentro do container aparece em ./models na sua máquina
       - ./models:/app/models
+      # Cache do CSV: baixa uma vez e reaproveita nas próximas execuções
+      - ./data:/app/data
       # Edite o train_model.py e rode de novo sem rebuildar a imagem
       - ./train_model.py:/app/train_model.py:ro
+      # Template do painel: o treino injeta os dados e escreve models/painel.html
+      - ./painel:/app/painel:ro

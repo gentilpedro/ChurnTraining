@@ -1,0 +1,661 @@
+<title>Painel de Retenção Avenida</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root {
+  --plane:#edf0f4; --surface:#fbfcfd; --surface-2:#f3f6f9; --surface-3:#e8ecf2;
+  --ink:#0d1117; --ink-2:#4a5361; --muted:#767f8d;
+  --grid:#e2e6ec; --rule:#d6dce4; --border:rgba(13,17,23,.11);
+  --estavel:#2a78d6; --risco:#e34948;
+  --st-mod:#fab219; --st-alto:#ec835a; --st-crit:#d03b3b; --st-bom:#0ca30c;
+  --accent:#1d5bb0;
+  --shadow:0 1px 2px rgba(13,17,23,.05), 0 8px 24px -16px rgba(13,17,23,.28);
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --disp:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --plane:#0b0e13; --surface:#161a21; --surface-2:#1d222b; --surface-3:#252b35;
+    --ink:#f2f5f9; --ink-2:#aab4c2; --muted:#7e8896;
+    --grid:#242a34; --rule:#2f3642; --border:rgba(255,255,255,.12);
+    --estavel:#3987e5; --risco:#e66767;
+    --accent:#6da7ec;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --plane:#0b0e13; --surface:#161a21; --surface-2:#1d222b; --surface-3:#252b35;
+  --ink:#f2f5f9; --ink-2:#aab4c2; --muted:#7e8896;
+  --grid:#242a34; --rule:#2f3642; --border:rgba(255,255,255,.12);
+  --estavel:#3987e5; --risco:#e66767;
+  --accent:#6da7ec;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+body{background:var(--plane);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1240px;margin:0 auto;padding:0 20px 64px}
+h1,h2,h3{font-family:var(--disp);font-weight:600;text-wrap:balance;margin:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.topbar{border-bottom:1px solid var(--rule);background:var(--surface)}
+.topbar .inner{max-width:1240px;margin:0 auto;padding:16px 20px;display:flex;flex-wrap:wrap;gap:16px 28px;align-items:baseline}
+.mark{display:flex;flex-direction:column;gap:3px}
+.mark b{font-family:var(--disp);font-weight:700;font-size:19px;letter-spacing:.15em;text-transform:uppercase;line-height:1}
+.mark span{font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted)}
+.topmeta{margin-left:auto;display:flex;gap:26px;flex-wrap:wrap;margin-block:0}
+.topmeta div{display:flex;flex-direction:column;gap:3px}
+.topmeta dt{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.topmeta dd{margin:0;font-family:var(--mono);font-size:12.5px;font-weight:500}
+
+.lede{padding:30px 0 22px;max-width:68ch}
+.lede h1{font-size:30px;line-height:1.16;letter-spacing:-.016em}
+.lede p{color:var(--ink-2);margin:11px 0 0}
+
+.controls{position:sticky;top:0;z-index:30;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow);padding:14px 16px;display:flex;flex-wrap:wrap;gap:16px 22px;align-items:flex-end}
+.ctl{display:flex;flex-direction:column;gap:6px}
+.ctl>label,.ctl>.lbl{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.ctl select,.ctl input[type=search]{font-family:var(--sans);font-size:13px;color:var(--ink);background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:6px 9px;min-width:126px}
+.ctl-thr{flex:1 1 250px;min-width:230px}
+.thr-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.thr-val{font-family:var(--mono);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--risco);margin:0;display:block}
+.switch{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-2);cursor:pointer;padding-bottom:6px}
+.switch input{accent-color:var(--accent);width:15px;height:15px}
+.reset{margin-left:auto;background:none;border:1px solid var(--border);border-radius:6px;color:var(--ink-2);font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;padding:7px 11px;cursor:pointer}
+.reset:hover{background:var(--surface-2);color:var(--ink)}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(186px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:10px;overflow:hidden;margin-top:18px}
+.kpi{background:var(--surface);padding:16px 18px 15px;display:flex;flex-direction:column;gap:5px}
+.kpi dt{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.kpi .v{font-family:var(--disp);font-size:27px;font-weight:600;letter-spacing:-.02em;line-height:1.05}
+.kpi .s{font-size:12px;color:var(--ink-2)}
+.kpi.is-risco{box-shadow:inset 3px 0 0 var(--risco)}
+.kpi.is-estavel{box-shadow:inset 3px 0 0 var(--estavel)}
+
+section{margin-top:34px}
+.sec-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.sec-head h2{font-size:17px;letter-spacing:-.01em}
+.sec-head p{margin:0;font-size:12.5px;color:var(--muted);max-width:64ch}
+.grid2{display:grid;grid-template-columns:minmax(0,1.32fr) minmax(0,1fr);gap:18px}
+@media (max-width:900px){.grid2{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;box-shadow:var(--shadow)}
+.card h3{font-size:13.5px}
+.card .note{font-size:12px;color:var(--muted);margin:4px 0 0;line-height:1.5}
+
+.hist{margin-top:22px;position:relative}
+.hist-bars{display:flex;align-items:flex-end;gap:2px;height:168px;border-bottom:1px solid var(--rule);position:relative}
+.hb{flex:1;min-width:0;display:flex;align-items:flex-end;height:100%}
+.hb i{display:block;width:100%;border-radius:4px 4px 0 0;background:var(--estavel);min-height:1px}
+.hb.over i{background:var(--risco)}
+.hb:hover i{filter:brightness(1.14)}
+.cutline{position:absolute;top:-8px;bottom:0;width:2px;background:var(--ink);z-index:2;pointer-events:none}
+.cutline em{position:absolute;top:-18px;left:50%;transform:translateX(-50%);white-space:nowrap;font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;font-style:normal;color:var(--ink)}
+.hist-axis{display:flex;justify-content:space-between;margin-top:7px;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:var(--ink-2)}
+.legend span{display:flex;align-items:center;gap:7px}
+.sw{width:11px;height:11px;border-radius:3px;display:inline-block;flex:none}
+
+.mtx{display:grid;grid-template-columns:auto 1fr 1fr;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:8px;overflow:hidden;margin-top:16px}
+.mtx>*{background:var(--surface);padding:11px 12px}
+.mtx .hd{font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);display:flex;align-items:flex-end;line-height:1.3}
+.mtx .cell{display:flex;flex-direction:column;gap:2px}
+.mtx .cell b{font-family:var(--mono);font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
+.mtx .cell small{font-size:11px;color:var(--muted);line-height:1.35}
+.mtx .hit b{color:var(--st-bom)}
+.mtx .miss b{color:var(--risco)}
+.metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:8px;overflow:hidden;margin-top:14px}
+.metrics>div{background:var(--surface);padding:11px 12px;display:flex;flex-direction:column;gap:3px}
+.metrics dt{font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.metrics dd{margin:0;font-family:var(--mono);font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+.metrics .lead dd{color:var(--accent)}
+
+.seg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(272px,1fr));gap:18px}
+.rows{display:flex;flex-direction:column;gap:9px;margin-top:16px}
+.row{display:grid;grid-template-columns:98px minmax(0,1fr) 46px;gap:10px;align-items:center}
+.rows.wide .row{grid-template-columns:158px minmax(0,1fr) 46px}
+.row .k{font-size:12px;color:var(--ink-2);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .k em{font-style:normal;font-family:var(--mono);font-size:10px;color:var(--muted)}
+.track{position:relative;height:12px;background:var(--surface-3);border-radius:4px}
+.track i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--risco);min-width:2px}
+.track.cool i{background:var(--estavel)}
+.row .v{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;color:var(--ink);text-align:right}
+.baserule{position:absolute;top:-4px;bottom:-4px;width:1.5px;background:var(--ink-2);opacity:.5;z-index:1}
+.baseleg{margin-top:13px;font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:7px}
+.baseleg i{width:1.5px;height:13px;background:var(--ink-2);opacity:.5;display:inline-block;flex:none}
+
+.tabs{display:flex;gap:2px;margin-bottom:-1px;position:relative;z-index:1;flex-wrap:wrap}
+.tab{font-family:var(--sans);font-size:13px;font-weight:500;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--border);border-bottom-color:transparent;border-radius:8px 8px 0 0;padding:9px 15px;cursor:pointer;display:flex;align-items:center;gap:8px}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--ink);font-weight:600}
+.tab .cnt{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.tab[aria-selected="true"] .cnt{color:var(--ink-2)}
+.tab .dot{width:8px;height:8px;border-radius:2px;flex:none}
+.tablewrap{background:var(--surface);border:1px solid var(--border);border-radius:0 10px 10px 10px;box-shadow:var(--shadow);overflow:hidden}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:900px}
+thead th{position:sticky;top:0;background:var(--surface-2);font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500;text-align:left;padding:10px 12px;border-bottom:1px solid var(--rule);white-space:nowrap;cursor:pointer;user-select:none}
+thead th.num{text-align:right}
+thead th:hover{color:var(--ink)}
+thead th.on{color:var(--ink)}
+thead th .ar{opacity:.6;font-size:9px}
+tbody td{padding:9px 12px;border-bottom:1px solid var(--grid);font-size:13px;white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--surface-2)}
+td.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12.5px}
+td.id{font-family:var(--mono);font-size:12.5px;color:var(--ink-2)}
+.riskcell{display:flex;align-items:center;gap:9px;min-width:130px}
+.riskcell .t{position:relative;flex:1;height:6px;border-radius:3px;background:var(--surface-3);overflow:hidden}
+.riskcell .t i{position:absolute;top:0;bottom:0;left:0;border-radius:3px}
+.riskcell b{font-family:var(--mono);font-size:12.5px;font-weight:500;font-variant-numeric:tabular-nums;width:42px;text-align:right}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:500;padding:2.5px 8px 2.5px 6px;border-radius:5px;background:var(--surface-3);color:var(--ink)}
+.chip .d{width:8px;height:8px;border-radius:2px;flex:none}
+.outcome{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.outcome.saiu{color:var(--risco)}
+.tbl-foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:13px 14px;border-top:1px solid var(--rule);background:var(--surface-2)}
+.tbl-foot p{margin:0;font-size:12px;color:var(--muted)}
+.more{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 13px;color:var(--ink);cursor:pointer}
+.more:hover{background:var(--surface-3)}
+.empty{padding:38px 18px;text-align:center;color:var(--muted);font-size:13px}
+
+.foot{margin-top:42px;border-top:1px solid var(--rule);padding-top:22px;display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:24px}
+.foot h3{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:500;margin:0 0 8px}
+.foot p{margin:0;font-size:12.5px;color:var(--ink-2);line-height:1.62}
+.foot code{font-family:var(--mono);font-size:11.5px;background:var(--surface-3);padding:1px 5px;border-radius:4px}
+
+.tip{position:fixed;z-index:80;pointer-events:none;background:var(--ink);color:var(--plane);font-family:var(--mono);font-size:11.5px;line-height:1.5;padding:7px 9px;border-radius:6px;opacity:0;transition:opacity .1s;max-width:240px}
+.tip.on{opacity:1}
+.tip b{color:var(--surface);font-weight:600}
+</style>
+
+<header class="topbar">
+  <div class="inner">
+    <div class="mark">
+      <b>Banco Avenida</b>
+      <span>Núcleo de Retenção</span>
+    </div>
+    <dl class="topmeta">
+      <div><dt>Base</dt><dd id="m-base">—</dd></div>
+      <div><dt>Modelo</dt><dd>Árvore de Decisão</dd></div>
+      <div><dt>Churn histórico</dt><dd id="m-churn">—</dd></div>
+    </dl>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="lede">
+    <h1>Quem está prestes a deixar o banco</h1>
+    <p>O modelo aprendeu com os clientes que já cancelaram e devolve, para cada correntista da
+    base, uma probabilidade de saída. O corte abaixo decide quem entra na fila de retenção —
+    baixe o corte e a equipe fala com mais gente, inclusive com quem ia ficar de qualquer jeito.</p>
+  </div>
+
+  <div class="controls">
+    <div class="ctl ctl-thr">
+      <div class="thr-head">
+        <label for="thr">Corte de risco</label>
+        <span class="thr-val" id="thr-val">0,50</span>
+      </div>
+      <input type="range" id="thr" min="0.05" max="0.95" step="0.05" value="0.5">
+    </div>
+    <div class="ctl">
+      <label for="f-pais">País</label>
+      <select id="f-pais"><option value="todos">Todos</option></select>
+    </div>
+    <div class="ctl">
+      <label for="f-ativ">Atividade</label>
+      <select id="f-ativ">
+        <option value="todos">Todos</option>
+        <option value="1">Ativos</option>
+        <option value="0">Inativos</option>
+      </select>
+    </div>
+    <div class="ctl">
+      <label for="f-busca">Buscar cliente</label>
+      <input type="search" id="f-busca" placeholder="ID do cliente" autocomplete="off">
+    </div>
+    <label class="switch" for="f-teste">
+      <input type="checkbox" id="f-teste">
+      Só quem ficou fora do treino
+    </label>
+    <button class="reset" id="reset" type="button">Limpar</button>
+  </div>
+
+  <dl class="kpis" id="kpis"></dl>
+
+  <section>
+    <div class="sec-head">
+      <h2>O corte e o que ele custa</h2>
+      <p>À esquerda, como as notas se espalham pela carteira. À direita, o preço do corte medido
+      nos 2.000 clientes que o modelo nunca viu no treino.</p>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h3>Distribuição das notas de risco</h3>
+        <p class="note">Cada barra é uma faixa de 5 pontos de probabilidade. A árvore tem 44 folhas,
+        então as notas se concentram em degraus — faixas vazias são normais.</p>
+        <div class="hist">
+          <div class="hist-bars" id="hist"></div>
+          <div class="hist-axis"><span>0,00</span><span>0,25</span><span>0,50</span><span>0,75</span><span>1,00</span></div>
+        </div>
+        <div class="legend">
+          <span><i class="sw" style="background:var(--estavel)"></i> Abaixo do corte — estável</span>
+          <span><i class="sw" style="background:var(--risco)"></i> No corte ou acima — em risco</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Qualidade do modelo</h3>
+        <p class="note">Conjunto de teste, sempre os mesmos 2.000 clientes — os filtros de país,
+        atividade e busca não mexem aqui, só o corte.</p>
+        <div class="mtx" id="mtx"></div>
+        <dl class="metrics" id="metrics"></dl>
+        <p class="note" id="baseline-note"></p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Onde o churn se concentra</h2>
+      <p>Percentual que de fato cancelou em cada grupo, apurado no histórico — não é previsão.
+      A linha vertical marca a média da carteira filtrada.</p>
+    </div>
+    <div class="seg-grid" id="segs"></div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>No que o modelo se apoia</h2>
+      <p>Peso de cada característica nas decisões da árvore. Tempo de casa, salário e cartão
+      quase não contam — idade e número de produtos decidem quase tudo.</p>
+    </div>
+    <div class="card">
+      <div class="rows wide" id="imps"></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>A carteira, cliente a cliente</h2>
+      <p>Clique em qualquer coluna para reordenar.</p>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab" id="tab-risco" role="tab" aria-selected="true" aria-controls="tbl">
+        <i class="dot" style="background:var(--risco)"></i> Em risco <span class="cnt" id="cnt-risco">—</span>
+      </button>
+      <button class="tab" id="tab-estavel" role="tab" aria-selected="false" aria-controls="tbl">
+        <i class="dot" style="background:var(--estavel)"></i> Estáveis <span class="cnt" id="cnt-estavel">—</span>
+      </button>
+    </div>
+    <div class="tablewrap">
+      <div class="scroll">
+        <table id="tbl">
+          <thead><tr id="thead-row"></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="tbl-foot">
+        <button class="more" id="more" type="button">Mostrar mais 60</button>
+        <p id="tbl-status">—</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="foot">
+    <div>
+      <h3>De onde vêm os números</h3>
+      <p>Bank Customer Churn Dataset (Kaggle, <code>gauravtopre</code>): 10.000 correntistas,
+      2.037 deles cancelaram. Banco Avenida é um nome fictício sobre esses dados.</p>
+    </div>
+    <div>
+      <h3>Uma ressalva honesta</h3>
+      <p>8.000 destes clientes foram usados para treinar a árvore, e nessas linhas a nota sai
+      otimista. O botão <em>“Só quem ficou fora do treino”</em> restringe a carteira aos 2.000
+      que o modelo nunca viu — é essa visão que se parece com produção.</p>
+    </div>
+    <div>
+      <h3>Como regerar</h3>
+      <p><code>docker compose run --rm trainer</code> refaz o treino e reescreve esta página em
+      <code>models/painel.html</code> com as notas novas.</p>
+    </div>
+  </div>
+</div>
+
+<div class="tip" id="tip"></div>
+
+<script>
+const RAW = /*DADOS*/null;
+
+const C = Object.fromEntries(RAW.colunas.map((c, i) => [c, i]));
+const BASE = RAW.clientes;
+const nf = new Intl.NumberFormat("pt-BR");
+const pf = (v, d = 1) => new Intl.NumberFormat("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
+const moeda = v => "R$ " + nf.format(Math.round(v));
+const milhoes = v => "R$ " + pf(v / 1e6, 1) + " mi";
+
+const state = {
+  t: RAW.threshold,
+  pais: "todos", ativ: "todos", busca: "", soTeste: false,
+  aba: "risco", ordem: "risco_churn", dir: -1, limite: 60
+};
+
+/* ---------- corte e faixas ---------- */
+function faixa(p) {
+  if (p < state.t) return { nome: "Estável", cor: "var(--estavel)" };
+  const passo = (1 - state.t) / 3;
+  if (p < state.t + passo) return { nome: "Moderado", cor: "var(--st-mod)" };
+  if (p < state.t + 2 * passo) return { nome: "Alto", cor: "var(--st-alto)" };
+  return { nome: "Crítico", cor: "var(--st-crit)" };
+}
+
+function carteira() {
+  return BASE.filter(c =>
+    (state.pais === "todos" || c[C.country] === state.pais) &&
+    (state.ativ === "todos" || String(c[C.active_member]) === state.ativ) &&
+    (!state.soTeste || c[C.teste]) &&
+    (state.busca === "" || String(c[C.customer_id]).includes(state.busca))
+  );
+}
+
+/* ---------- tooltip ---------- */
+const tip = document.getElementById("tip");
+function mostrarTip(e, html) {
+  tip.innerHTML = html;
+  tip.classList.add("on");
+  const r = tip.getBoundingClientRect();
+  let x = e.clientX + 14, y = e.clientY - r.height - 10;
+  if (x + r.width > innerWidth - 8) x = e.clientX - r.width - 14;
+  if (y < 8) y = e.clientY + 18;
+  tip.style.left = x + "px";
+  tip.style.top = y + "px";
+}
+function esconderTip() { tip.classList.remove("on"); }
+
+/* ---------- KPIs ---------- */
+function renderKpis(lista) {
+  const risco = lista.filter(c => c[C.risco_churn] >= state.t);
+  const estaveis = lista.length - risco.length;
+  const saldo = risco.reduce((s, c) => s + c[C.balance], 0);
+  const criticos = risco.filter(c => faixa(c[C.risco_churn]).nome === "Crítico").length;
+  const pct = n => lista.length ? pf(100 * n / lista.length, 1) + "% da carteira" : "—";
+
+  document.getElementById("kpis").innerHTML = [
+    ["", "Carteira em tela", nf.format(lista.length), lista.length === BASE.length
+      ? "base completa" : pf(100 * lista.length / BASE.length, 1) + "% da base"],
+    ["is-risco", "Em risco", nf.format(risco.length), pct(risco.length)],
+    ["is-estavel", "Estáveis", nf.format(estaveis), pct(estaveis)],
+    ["", "Saldo sob risco", milhoes(saldo), "em contas sinalizadas"],
+    ["", "Risco crítico", nf.format(criticos), "prioridade da fila"]
+  ].map(([cls, k, v, s]) => `<div class="kpi ${cls}">
+      <dt>${k}</dt><dd class="v">${v}</dd><dd class="s">${s}</dd>
+    </div>`).join("");
+}
+
+/* ---------- histograma ---------- */
+function renderHist(lista) {
+  const NB = 20, bins = new Array(NB).fill(0);
+  for (const c of lista) bins[Math.min(NB - 1, Math.floor(c[C.risco_churn] / 0.05))]++;
+  const max = Math.max(...bins, 1);
+  const el = document.getElementById("hist");
+
+  el.innerHTML = bins.map((n, i) => {
+    const lo = i * 0.05, hi = lo + 0.05;
+    return `<div class="hb${lo >= state.t ? " over" : ""}" data-i="${i}"
+      ><i style="height:${(100 * n / max).toFixed(2)}%"></i></div>`;
+  }).join("") + `<div class="cutline" style="left:calc(${(100 * state.t).toFixed(2)}% - 1px)"><em>corte ${pf(state.t, 2)}</em></div>`;
+
+  el.querySelectorAll(".hb").forEach(b => {
+    const i = +b.dataset.i, n = bins[i];
+    const move = e => mostrarTip(e, `<b>${pf(i * 0.05, 2)} – ${pf(i * 0.05 + 0.05, 2)}</b><br>${nf.format(n)} cliente${n === 1 ? "" : "s"}<br>${lista.length ? pf(100 * n / lista.length, 1) : "0,0"}% da carteira`);
+    b.addEventListener("mousemove", move);
+    b.addEventListener("mouseleave", esconderTip);
+  });
+}
+
+/* ---------- qualidade do modelo ---------- */
+function renderModelo() {
+  const teste = BASE.filter(c => c[C.teste]);
+  let tp = 0, fp = 0, fn = 0, tn = 0;
+  for (const c of teste) {
+    const sinalizado = c[C.risco_churn] >= state.t, saiu = c[C.churn] === 1;
+    if (saiu && sinalizado) tp++; else if (saiu) fn++;
+    else if (sinalizado) fp++; else tn++;
+  }
+  const recall = tp + fn ? tp / (tp + fn) : 0;
+  const prec = tp + fp ? tp / (tp + fp) : 0;
+  const f1 = prec + recall ? 2 * prec * recall / (prec + recall) : 0;
+  const acc = (tp + tn) / teste.length;
+
+  document.getElementById("mtx").innerHTML = `
+    <div class="hd"></div>
+    <div class="hd">Sinalizado</div>
+    <div class="hd">Não sinalizado</div>
+    <div class="hd">Cancelou</div>
+    <div class="cell hit"><b>${nf.format(tp)}</b><small>alcançado a tempo</small></div>
+    <div class="cell miss"><b>${nf.format(fn)}</b><small>escapou sem aviso</small></div>
+    <div class="hd">Ficou</div>
+    <div class="cell miss"><b>${nf.format(fp)}</b><small>falso alarme</small></div>
+    <div class="cell hit"><b>${nf.format(tn)}</b><small>deixado em paz</small></div>`;
+
+  document.getElementById("metrics").innerHTML = [
+    ["lead", "Recall", pf(100 * recall, 1) + "%"],
+    ["", "Precisão", pf(100 * prec, 1) + "%"],
+    ["", "F1", pf(100 * f1, 1) + "%"],
+    ["", "Acurácia", pf(100 * acc, 1) + "%"]
+  ].map(([cls, k, v]) => `<div class="${cls}"><dt>${k}</dt><dd>${v}</dd></div>`).join("");
+
+  const baseline = 100 * (1 - RAW.taxa_churn_base);
+  document.getElementById("baseline-note").innerHTML =
+    `Chutar “ninguém sai” para todo mundo já daria ${pf(baseline, 1)}% de acurácia e nunca
+     salvaria um cliente. Por isso o recall manda: dos ${nf.format(tp + fn)} que cancelaram,
+     este corte alcança ${nf.format(tp)} — ao preço de ${nf.format(fp)} ligações para quem ia ficar.`;
+}
+
+/* ---------- segmentos ---------- */
+const SEGMENTOS = [
+  {
+    titulo: "Faixa etária", chave: c => {
+      const a = c[C.age];
+      return a < 30 ? "18 a 29" : a < 40 ? "30 a 39" : a < 50 ? "40 a 49" : a < 60 ? "50 a 59" : "60 ou mais";
+    },
+    ordem: ["18 a 29", "30 a 39", "40 a 49", "50 a 59", "60 ou mais"]
+  },
+  {
+    titulo: "Produtos contratados", chave: c => c[C.products_number] + (c[C.products_number] === 1 ? " produto" : " produtos"),
+    ordem: ["1 produto", "2 produtos", "3 produtos", "4 produtos"]
+  },
+  { titulo: "País", chave: c => ({ France: "França", Germany: "Alemanha", Spain: "Espanha" })[c[C.country]], ordem: ["França", "Alemanha", "Espanha"] },
+  { titulo: "Uso da conta", chave: c => c[C.active_member] ? "Cliente ativo" : "Cliente inativo", ordem: ["Cliente ativo", "Cliente inativo"] },
+  {
+    titulo: "Saldo em conta", chave: c => c[C.balance] === 0 ? "Zerado" : c[C.balance] < 100000 ? "Até 100 mil" : "Acima de 100 mil",
+    ordem: ["Zerado", "Até 100 mil", "Acima de 100 mil"]
+  },
+  {
+    titulo: "Tempo de casa", chave: c => {
+      const t = c[C.tenure];
+      return t <= 2 ? "0 a 2 anos" : t <= 5 ? "3 a 5 anos" : t <= 8 ? "6 a 8 anos" : "9 a 10 anos";
+    },
+    ordem: ["0 a 2 anos", "3 a 5 anos", "6 a 8 anos", "9 a 10 anos"]
+  }
+];
+
+function renderSegs(lista) {
+  const mediaCarteira = lista.length ? lista.reduce((s, c) => s + c[C.churn], 0) / lista.length : 0;
+
+  document.getElementById("segs").innerHTML = SEGMENTOS.map(seg => {
+    const m = new Map();
+    for (const c of lista) {
+      const k = seg.chave(c);
+      if (k == null) continue;
+      if (!m.has(k)) m.set(k, { n: 0, ch: 0 });
+      const v = m.get(k); v.n++; v.ch += c[C.churn];
+    }
+    const itens = seg.ordem.filter(k => m.has(k)).map(k => ({ k, ...m.get(k) }));
+    const escala = Math.max(...itens.map(i => i.ch / i.n), mediaCarteira, 0.01);
+
+    const linhas = itens.map(i => {
+      const taxa = i.ch / i.n;
+      return `<div class="row" data-tt="${i.k} · ${nf.format(i.n)} clientes · ${nf.format(i.ch)} cancelaram">
+        <span class="k">${i.k}<br><em>${nf.format(i.n)}</em></span>
+        <span class="track${taxa < mediaCarteira ? " cool" : ""}">
+          <i style="width:${(100 * taxa / escala).toFixed(2)}%"></i>
+          <span class="baserule" style="left:${(100 * mediaCarteira / escala).toFixed(2)}%"></span>
+        </span>
+        <span class="v">${pf(100 * taxa, 0)}%</span>
+      </div>`;
+    }).join("");
+
+    return `<div class="card"><h3>${seg.titulo}</h3><div class="rows">${linhas || '<p class="note">Sem clientes nesta seleção.</p>'}</div>
+      <p class="baseleg"><i></i> média da carteira: ${pf(100 * mediaCarteira, 1)}%</p></div>`;
+  }).join("");
+
+  document.querySelectorAll("#segs .row").forEach(r => {
+    r.addEventListener("mousemove", e => mostrarTip(e, r.dataset.tt.split(" · ").join("<br>")));
+    r.addEventListener("mouseleave", esconderTip);
+  });
+}
+
+/* ---------- importâncias ---------- */
+const NOMES = {
+  age: "Idade", products_number: "Nº de produtos", balance: "Saldo em conta",
+  active_member: "Cliente ativo", country_Germany: "Mora na Alemanha",
+  country_Spain: "Mora na Espanha", gender_Male: "Gênero masculino",
+  credit_score: "Score de crédito", tenure: "Tempo de casa",
+  estimated_salary: "Salário estimado", credit_card: "Tem cartão de crédito"
+};
+function renderImps() {
+  const max = RAW.importancias[0][1];
+  document.getElementById("imps").innerHTML = RAW.importancias.map(([f, v]) => `
+    <div class="row">
+      <span class="k">${NOMES[f] || f}</span>
+      <span class="track cool"><i style="width:${(100 * v / max).toFixed(2)}%"></i></span>
+      <span class="v">${pf(100 * v, 1)}%</span>
+    </div>`).join("");
+}
+
+/* ---------- tabela ---------- */
+const COLUNAS = [
+  { k: "customer_id", t: "Cliente", cls: "id", get: c => c[C.customer_id] },
+  { k: "risco_churn", t: "Risco", cls: "", html: c => {
+      const f = faixa(c[C.risco_churn]);
+      return `<span class="riskcell"><span class="t"><i style="width:${(100 * c[C.risco_churn]).toFixed(1)}%;background:${f.cor}"></i></span><b>${pf(100 * c[C.risco_churn], 0)}%</b></span>`;
+    } },
+  { k: "faixa", t: "Nível", cls: "", html: c => {
+      const f = faixa(c[C.risco_churn]);
+      return `<span class="chip"><i class="d" style="background:${f.cor}"></i>${f.nome}</span>`;
+    }, val: c => c[C.risco_churn] },
+  { k: "age", t: "Idade", cls: "num", get: c => c[C.age] },
+  { k: "country", t: "País", cls: "", get: c => ({ France: "França", Germany: "Alemanha", Spain: "Espanha" })[c[C.country]] },
+  { k: "products_number", t: "Produtos", cls: "num", get: c => c[C.products_number] },
+  { k: "balance", t: "Saldo", cls: "num", get: c => moeda(c[C.balance]) },
+  { k: "tenure", t: "Anos de casa", cls: "num", get: c => c[C.tenure] },
+  { k: "active_member", t: "Conta", cls: "", get: c => c[C.active_member] ? "Ativa" : "Inativa" },
+  { k: "churn", t: "Desfecho no dataset", cls: "", html: c => c[C.churn]
+      ? '<span class="outcome saiu">saiu</span>' : '<span class="outcome">ficou</span>' }
+];
+
+function renderHead() {
+  document.getElementById("thead-row").innerHTML = COLUNAS.map(col => {
+    const on = state.ordem === col.k;
+    return `<th class="${col.cls === "num" ? "num" : ""}${on ? " on" : ""}" data-k="${col.k}"
+      ${on ? `aria-sort="${state.dir === 1 ? "ascending" : "descending"}"` : ""}
+      >${col.t}${on ? ` <span class="ar">${state.dir === 1 ? "▲" : "▼"}</span>` : ""}</th>`;
+  }).join("");
+
+  document.getElementById("thead-row").querySelectorAll("th").forEach(th => {
+    th.addEventListener("click", () => {
+      const k = th.dataset.k;
+      if (state.ordem === k) state.dir *= -1;
+      else { state.ordem = k; state.dir = -1; }
+      state.limite = 60;
+      render();
+    });
+  });
+}
+
+function renderTabela(lista) {
+  const risco = lista.filter(c => c[C.risco_churn] >= state.t);
+  const estaveis = lista.filter(c => c[C.risco_churn] < state.t);
+  document.getElementById("cnt-risco").textContent = nf.format(risco.length);
+  document.getElementById("cnt-estavel").textContent = nf.format(estaveis.length);
+  document.getElementById("tab-risco").setAttribute("aria-selected", state.aba === "risco");
+  document.getElementById("tab-estavel").setAttribute("aria-selected", state.aba === "estavel");
+
+  const col = COLUNAS.find(c => c.k === state.ordem) || COLUNAS[1];
+  const valor = col.val || (c => {
+    const i = C[col.k];
+    return i === undefined ? 0 : c[i];
+  });
+  const linhas = (state.aba === "risco" ? risco : estaveis).slice().sort((a, b) => {
+    const va = valor(a), vb = valor(b);
+    if (va === vb) return b[C.risco_churn] - a[C.risco_churn];
+    if (typeof va === "string") return state.dir * va.localeCompare(vb, "pt-BR");
+    return state.dir * (va - vb);
+  });
+
+  const visiveis = linhas.slice(0, state.limite);
+  const tbody = document.getElementById("tbody");
+
+  tbody.innerHTML = visiveis.length ? visiveis.map(c => "<tr>" + COLUNAS.map(col =>
+    `<td class="${col.cls}">${col.html ? col.html(c) : col.get(c)}</td>`).join("") + "</tr>").join("")
+    : `<tr><td colspan="${COLUNAS.length}"><p class="empty">Nenhum cliente ${state.aba === "risco" ? "em risco" : "estável"} nesta seleção.</p></td></tr>`;
+
+  const more = document.getElementById("more");
+  more.hidden = visiveis.length >= linhas.length;
+  document.getElementById("tbl-status").textContent = linhas.length
+    ? `Mostrando ${nf.format(visiveis.length)} de ${nf.format(linhas.length)} clientes.`
+    : "Nada para mostrar com os filtros atuais.";
+}
+
+/* ---------- render ---------- */
+function render() {
+  const lista = carteira();
+  document.getElementById("thr-val").textContent = pf(state.t, 2);
+  renderKpis(lista);
+  renderHist(lista);
+  renderModelo();
+  renderSegs(lista);
+  renderHead();
+  renderTabela(lista);
+}
+
+/* ---------- eventos ---------- */
+function ligar() {
+  document.getElementById("m-base").textContent = nf.format(RAW.n_clientes) + " clientes";
+  document.getElementById("m-churn").textContent = pf(100 * RAW.taxa_churn_base, 1) + "%";
+
+  const sel = document.getElementById("f-pais");
+  for (const [cod, nome] of [["France", "França"], ["Germany", "Alemanha"], ["Spain", "Espanha"]]) {
+    const o = document.createElement("option");
+    o.value = cod; o.textContent = nome; sel.appendChild(o);
+  }
+
+  document.getElementById("thr").addEventListener("input", e => {
+    state.t = +e.target.value; state.limite = 60; render();
+  });
+  sel.addEventListener("change", e => { state.pais = e.target.value; state.limite = 60; render(); });
+  document.getElementById("f-ativ").addEventListener("change", e => { state.ativ = e.target.value; state.limite = 60; render(); });
+  document.getElementById("f-busca").addEventListener("input", e => { state.busca = e.target.value.trim(); state.limite = 60; render(); });
+  document.getElementById("f-teste").addEventListener("change", e => { state.soTeste = e.target.checked; state.limite = 60; render(); });
+  document.getElementById("more").addEventListener("click", () => { state.limite += 60; render(); });
+  document.getElementById("tab-risco").addEventListener("click", () => { state.aba = "risco"; state.limite = 60; render(); });
+  document.getElementById("tab-estavel").addEventListener("click", () => { state.aba = "estavel"; state.limite = 60; render(); });
+  document.getElementById("reset").addEventListener("click", () => {
+    Object.assign(state, { t: RAW.threshold, pais: "todos", ativ: "todos", busca: "", soTeste: false, limite: 60 });
+    document.getElementById("thr").value = RAW.threshold;
+    sel.value = "todos";
+    document.getElementById("f-ativ").value = "todos";
+    document.getElementById("f-busca").value = "";
+    document.getElementById("f-teste").checked = false;
+    render();
+  });
+
+  renderImps();
+  render();
+}
+ligar();
+</script>

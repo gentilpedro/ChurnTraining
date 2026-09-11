@@ -1,5 +1,8 @@
 # Artefatos de modelo gerados pelo treino
 models/*.pkl
+models/*.csv
+models/*.json
+models/painel.html
 
 # Ambientes virtuais Python
 .venv/
@@ -20,3 +23,6 @@ __pycache__/
 .vscode/
 .idea/
 *.swp
+
+# Dataset baixado/cacheado
+data/*.csv
