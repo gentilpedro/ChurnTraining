@@ -130,6 +130,25 @@ precisa rebuild.
 
 ## Como rodar
 
+```bash
+./subir.sh
+```
+
+Treina, publica o painel e imprime os endereços. No Windows, rode pelo Git Bash
+(`bash subir.sh`). As opções:
+
+| Comando                | O que faz                                                 |
+| ---------------------- | ----------------------------------------------------------- |
+| `./subir.sh`         | Treina e sobe o site.                                        |
+| `./subir.sh --abrir` | Idem, e abre o navegador no painel.                          |
+| `./subir.sh --rebuild` | Refaz a imagem antes. Use ao mexer no `requirements.txt`. |
+| `./subir.sh --parar` | Derruba o site.                                              |
+
+O treino roda em primeiro plano de propósito, para as métricas do modelo aparecerem na tela;
+se ele falhar, o script para ali e o site não sobe servindo uma página velha.
+
+### Na mão, sem o script
+
 São dois serviços: `trainer` treina e gera os artefatos, `site` serve o painel.
 
 **Treinar e subir o site de uma vez:**
@@ -212,6 +231,7 @@ decorar a base e generalizar.
 
 | Arquivo                | Papel                                                                              |
 | ---------------------- | ---------------------------------------------------------------------------------- |
+| `subir.sh`           | Sobe a aplicação: treina, publica o painel e mostra os endereços.             |
 | `train_model.py`     | Pipeline completo: dataset → treino → avaliação → clientes em risco → painel. |
 | `painel/painel.html` | Template do painel completo, com `/*DADOS*/null` no lugar dos dados.              |
 | `painel/resumo.html` | Template da versão de apresentação, mesmo marcador e mesmos dados.               |
