@@ -1,0 +1,130 @@
+<meta charset="utf-8">
+<title>Contas em Risco</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --fundo:#f2f4f7; --papel:#fff; --linha:#e3e8ee; --trilho:#e9edf2;
+  --texto:#12161c; --texto-2:#5b6573; --risco:#d03b3b;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --fundo:#0c0f14; --papel:#161a21; --linha:#262d38; --trilho:#232a34;
+    --texto:#f0f3f7; --texto-2:#9aa5b3; --risco:#e66767;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --fundo:#0c0f14; --papel:#161a21; --linha:#262d38; --trilho:#232a34;
+  --texto:#f0f3f7; --texto-2:#9aa5b3; --risco:#e66767;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+body{background:var(--fundo);color:var(--texto);font-family:var(--sans);font-size:15px;line-height:1.5}
+.pagina{max-width:860px;margin:0 auto;padding:40px 20px 60px}
+
+h1{font-size:26px;font-weight:600;letter-spacing:-.015em;margin:0}
+.resumo{color:var(--texto-2);font-size:15px;margin:8px 0 0}
+.resumo b{color:var(--texto);font-family:var(--mono);font-weight:600}
+
+.busca{width:100%;margin:22px 0 0;font-family:var(--sans);font-size:15px;color:var(--texto);
+  background:var(--papel);border:1px solid var(--linha);border-radius:8px;padding:11px 14px}
+.busca::placeholder{color:var(--texto-2)}
+.busca:focus{outline:2px solid var(--risco);outline-offset:1px}
+
+.lista{margin-top:18px;background:var(--papel);border:1px solid var(--linha);border-radius:10px;overflow:hidden}
+.conta{display:grid;grid-template-columns:1fr auto;gap:4px 18px;align-items:center;
+  padding:14px 18px;border-bottom:1px solid var(--linha)}
+.conta:last-child{border-bottom:none}
+.numero{font-family:var(--mono);font-size:15px;font-weight:500}
+.dados{font-size:13px;color:var(--texto-2);grid-column:1}
+.medida{grid-column:2;grid-row:1 / span 2;display:flex;align-items:center;gap:12px}
+.barra{width:84px;height:8px;border-radius:4px;background:var(--trilho);position:relative;flex:none}
+.barra i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--risco)}
+.pct{font-family:var(--mono);font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;
+  color:var(--risco);width:52px;text-align:right}
+@media (max-width:520px){
+  .conta{grid-template-columns:1fr}
+  .medida{grid-column:1;grid-row:auto;margin-top:6px}
+}
+
+.rodape{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:18px}
+.mais{font-family:var(--sans);font-size:14px;font-weight:500;background:var(--papel);
+  border:1px solid var(--linha);border-radius:8px;padding:11px 18px;color:var(--texto);cursor:pointer}
+.mais:hover{border-color:var(--texto-2)}
+.contagem{font-size:13px;color:var(--texto-2)}
+.vazio{padding:36px 18px;text-align:center;color:var(--texto-2)}
+</style>
+
+<div class="pagina">
+  <h1>Contas com maior chance de sair</h1>
+  <p class="resumo" id="resumo">—</p>
+
+  <input type="search" class="busca" id="busca" placeholder="Buscar número da conta" autocomplete="off">
+
+  <div class="lista" id="lista"></div>
+
+  <div class="rodape">
+    <button class="mais" id="mais" type="button">Mostrar mais 50</button>
+    <span class="contagem" id="contagem">—</span>
+  </div>
+</div>
+
+<script>
+const RAW = /*DADOS*/null;
+const C = Object.fromEntries(RAW.colunas.map((c, i) => [c, i]));
+const nf = new Intl.NumberFormat("pt-BR");
+const PAIS = { France: "França", Germany: "Alemanha", Spain: "Espanha" };
+
+// Só quem passou do corte, do mais provável para o menos provável
+const CONTAS = RAW.clientes
+  .filter(c => c[C.risco_churn] >= RAW.threshold)
+  .sort((a, b) => b[C.risco_churn] - a[C.risco_churn] || b[C.balance] - a[C.balance]);
+
+let busca = "", limite = 50;
+
+function desenhar() {
+  const achadas = busca
+    ? CONTAS.filter(c => String(c[C.customer_id]).includes(busca))
+    : CONTAS;
+  const mostrar = achadas.slice(0, limite);
+
+  document.getElementById("resumo").innerHTML =
+    `<b>${nf.format(CONTAS.length)}</b> contas com probabilidade de saída acima de
+     ${Math.round(100 * RAW.threshold)}%, da maior para a menor.
+     Quem empata na mesma probabilidade aparece com o maior saldo primeiro.`;
+
+  document.getElementById("lista").innerHTML = mostrar.length ? mostrar.map(c => {
+    const pct = Math.round(100 * c[C.risco_churn]);
+    return `<div class="conta">
+      <span class="numero">${c[C.customer_id]}</span>
+      <span class="dados">${c[C.age]} anos · ${PAIS[c[C.country]]} · ${c[C.products_number]} produto${c[C.products_number] > 1 ? "s" : ""} · saldo R$ ${nf.format(Math.round(c[C.balance]))} · conta ${c[C.active_member] ? "ativa" : "inativa"}</span>
+      <span class="medida">
+        <span class="barra"><i style="width:${pct}%"></i></span>
+        <span class="pct">${pct}%</span>
+      </span>
+    </div>`;
+  }).join("") : `<p class="vazio">Nenhuma conta encontrada com “${busca}”.</p>`;
+
+  document.getElementById("mais").hidden = mostrar.length >= achadas.length;
+  document.getElementById("contagem").textContent = achadas.length
+    ? `Mostrando ${nf.format(mostrar.length)} de ${nf.format(achadas.length)}.`
+    : "";
+}
+
+document.getElementById("busca").addEventListener("input", e => {
+  busca = e.target.value.trim();
+  limite = 50;
+  desenhar();
+});
+document.getElementById("mais").addEventListener("click", () => {
+  limite += 50;
+  desenhar();
+});
+
+desenhar();
+</script>
