@@ -134,13 +134,13 @@ precisa rebuild.
 ./subir.sh
 ```
 
-Treina, publica o painel e imprime os endereços. No Windows, rode pelo Git Bash
+Treina, publica o painel e abre ele no navegador. No Windows, rode pelo Git Bash
 (`bash subir.sh`). As opções:
 
 | Comando                | O que faz                                                 |
 | ---------------------- | ----------------------------------------------------------- |
-| `./subir.sh`         | Treina e sobe o site.                                        |
-| `./subir.sh --abrir` | Idem, e abre o navegador no painel.                          |
+| `./subir.sh`         | Treina, sobe o site e abre o painel no navegador.            |
+| `./subir.sh --sem-abrir` | Idem, sem abrir o navegador.                             |
 | `./subir.sh --rebuild` | Refaz a imagem antes. Use ao mexer no `requirements.txt`. |
 | `./subir.sh --parar` | Derruba o site.                                              |
 

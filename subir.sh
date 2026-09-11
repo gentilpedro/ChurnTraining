@@ -2,8 +2,8 @@
 #
 # Sobe a aplicação inteira: treina o modelo e publica o painel.
 #
-#   ./subir.sh              treina e sobe o site
-#   ./subir.sh --abrir      idem, e abre o navegador no painel
+#   ./subir.sh              treina, sobe o site e abre o painel no navegador
+#   ./subir.sh --sem-abrir  idem, sem abrir o navegador
 #   ./subir.sh --rebuild    refaz a imagem antes (use ao mexer no requirements.txt)
 #   ./subir.sh --parar      derruba o site
 #
@@ -15,12 +15,14 @@ cd "$(dirname "$0")"
 PORTA=8080
 URL="http://localhost:${PORTA}"
 
-abrir=0
+# Abrir o painel é o padrão: quem roda isso quer ver a aplicação, não um prompt
+abrir=1
 rebuild=0
 parar=0
 
 for arg in "$@"; do
   case "$arg" in
+    --sem-abrir) abrir=0 ;;
     --abrir)   abrir=1 ;;
     --rebuild) rebuild=1 ;;
     --parar)   parar=1 ;;
@@ -79,6 +81,25 @@ if command -v curl >/dev/null 2>&1; then
   fi
 fi
 
+# --- Navegador ------------------------------------------------------------
+# No Windows é explorer.exe, não 'cmd.exe /c start': o Git Bash converte o /c
+# em caminho (C:\...) antes do cmd ver, e o que abre é um prompt interativo.
+# O explorer devolve código 1 mesmo quando abre certo, daí o '|| true' — sem ele
+# o set -e derrubaria o script depois da aplicação já estar no ar.
+if [ "$abrir" -eq 1 ]; then
+  echo
+  echo "==> Abrindo o painel no navegador"
+  if command -v explorer.exe >/dev/null 2>&1; then
+    explorer.exe "$URL" >/dev/null 2>&1 || true
+  elif command -v open >/dev/null 2>&1; then
+    open "$URL" >/dev/null 2>&1 || true
+  elif command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$URL" >/dev/null 2>&1 || true
+  else
+    echo "Não achei como abrir o navegador daqui; abra ${URL} na mão."
+  fi
+fi
+
 echo
 echo "Aplicação no ar:"
 echo "  ${URL}               painel de retenção"
@@ -86,12 +107,3 @@ echo "  ${URL}/contas.html   só a lista de contas em risco"
 echo "  ${URL}/resumo.html   resumo para apresentação"
 echo
 echo "Para derrubar: ./subir.sh --parar"
-
-# --- Navegador ------------------------------------------------------------
-if [ "$abrir" -eq 1 ]; then
-  if command -v xdg-open >/dev/null 2>&1; then xdg-open "$URL" >/dev/null 2>&1 &
-  elif command -v open >/dev/null 2>&1; then open "$URL" >/dev/null 2>&1 &
-  elif command -v cmd.exe >/dev/null 2>&1; then cmd.exe /c start "" "$URL" >/dev/null 2>&1 &
-  else echo "Não consegui abrir o navegador sozinho; acesse ${URL}."
-  fi
-fi
