@@ -5,6 +5,7 @@ from sklearn.metrics import (accuracy_score, precision_score, recall_score,
                              f1_score, confusion_matrix)
 import joblib
 import json
+import glob
 import os
 
 # Diretório de saída dos artefatos (sobrescrevível via variável de ambiente)
@@ -13,9 +14,8 @@ MODEL_PATH = os.path.join(MODEL_DIR, "churn_model.pkl")
 RISK_PATH = os.path.join(MODEL_DIR, "clientes_em_risco.csv")
 # Base inteira pontuada, consumida pelo painel do Banco Avenida
 DASH_PATH = os.path.join(MODEL_DIR, "dashboard_data.json")
-# Template do painel + página final com os dados já embutidos
-TEMPLATE_PATH = os.getenv("TEMPLATE_PATH", os.path.join("painel", "painel.html"))
-PAGE_PATH = os.path.join(MODEL_DIR, "painel.html")
+# Pasta dos templates de página; cada .html daqui vira uma página em MODEL_DIR
+PANEL_DIR = os.getenv("PANEL_DIR", "painel")
 os.makedirs(MODEL_DIR, exist_ok=True)
 
 # Onde o CSV do dataset fica guardado (baixado uma vez e reaproveitado)
@@ -175,15 +175,19 @@ with open(DASH_PATH, "w", encoding="utf-8") as f:
 print(f"[7/7] Base pontuada exportada em '{DASH_PATH}' "
       f"({len(linhas)} clientes).")
 
-# O painel é um HTML só: o template vem de painel/ e os dados entram no lugar do
-# marcador, então models/painel.html abre no navegador sem servidor nem rede.
-if os.path.exists(TEMPLATE_PATH):
-    with open(TEMPLATE_PATH, encoding="utf-8") as f:
-        template = f.read()
+# Cada página é um HTML só: o template vem de painel/ e os dados entram no lugar
+# do marcador, então o arquivo em models/ abre no navegador sem servidor nem rede.
+# Hoje são dois: painel.html (console completo) e resumo.html (apresentação).
+templates = sorted(glob.glob(os.path.join(PANEL_DIR, "*.html")))
+if templates:
     # '</' escapado para nenhum dado conseguir fechar a tag <script> antes da hora
-    pagina = template.replace("/*DADOS*/null", payload.replace("</", "<\\/"))
-    with open(PAGE_PATH, "w", encoding="utf-8") as f:
-        f.write(pagina)
-    print(f"      Painel do Banco Avenida gerado em '{PAGE_PATH}'.")
+    dados_js = payload.replace("</", "<\\/")
+    for template_path in templates:
+        with open(template_path, encoding="utf-8") as f:
+            pagina = f.read().replace("/*DADOS*/null", dados_js)
+        destino = os.path.join(MODEL_DIR, os.path.basename(template_path))
+        with open(destino, "w", encoding="utf-8") as f:
+            f.write(pagina)
+        print(f"      Página gerada em '{destino}'.")
 else:
-    print(f"      Template '{TEMPLATE_PATH}' não encontrado; painel não gerado.")
+    print(f"      Nenhum template .html em '{PANEL_DIR}'; páginas não geradas.")

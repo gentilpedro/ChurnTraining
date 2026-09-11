@@ -1,0 +1,376 @@
+<meta charset="utf-8">
+<title>Churn no Banco Avenida</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+:root{
+  --plane:#eef1f5; --surface:#fbfcfd; --surface-2:#e6ebf1;
+  --ink:#0d1117; --ink-2:#48515f; --muted:#737d8b;
+  --rule:#d3dae3; --border:rgba(13,17,23,.1);
+  --estavel:#2a78d6; --risco:#e34948; --bom:#0ca30c;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --disp:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --plane:#0b0e13; --surface:#161a21; --surface-2:#212833;
+    --ink:#f2f5f9; --ink-2:#aeb8c6; --muted:#7e8896;
+    --rule:#2c333e; --border:rgba(255,255,255,.12);
+    --estavel:#3987e5; --risco:#e66767; --bom:#0ca30c;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --plane:#0b0e13; --surface:#161a21; --surface-2:#212833;
+  --ink:#f2f5f9; --ink-2:#aeb8c6; --muted:#7e8896;
+  --rule:#2c333e; --border:rgba(255,255,255,.12);
+  --estavel:#3987e5; --risco:#e66767; --bom:#0ca30c;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+body{background:var(--plane);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--disp);font-weight:600;margin:0;text-wrap:balance}
+p{margin:0}
+
+.band{padding:52px 24px}
+.band.alt{background:var(--surface)}
+.band>.in{max-width:1020px;margin:0 auto}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
+.band h2{font-size:clamp(21px,2.6vw,27px);letter-spacing:-.015em;margin-bottom:8px}
+.band .sub{color:var(--ink-2);font-size:16px;max-width:62ch;margin-bottom:28px}
+
+/* capa */
+.capa{padding:64px 24px 56px;border-bottom:1px solid var(--rule);background:var(--surface)}
+.capa h1{font-size:clamp(32px,5.4vw,58px);line-height:1.06;letter-spacing:-.028em;max-width:17ch}
+.capa .sub{font-size:clamp(16px,1.9vw,19px);margin:20px 0 0;max-width:56ch}
+.capa .creds{display:flex;flex-wrap:wrap;gap:10px;margin-top:30px}
+.capa .creds span{font-family:var(--mono);font-size:12px;color:var(--ink-2);background:var(--surface-2);border-radius:5px;padding:5px 10px}
+
+/* números grandes */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:12px;overflow:hidden}
+.stat{background:var(--surface);padding:24px 22px;display:flex;flex-direction:column;gap:6px}
+.band.alt .stat{background:var(--plane)}
+.stat b{font-family:var(--disp);font-size:clamp(34px,4.4vw,50px);font-weight:600;letter-spacing:-.03em;line-height:1}
+.stat span{font-size:14px;color:var(--ink-2);line-height:1.4}
+.stat.vermelho b{color:var(--risco)}
+.stat.azul b{color:var(--estavel)}
+
+/* confronto */
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:720px){.vs{grid-template-columns:1fr}}
+.vs .op{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px}
+.band.alt .vs .op{background:var(--plane)}
+.vs .op.bom{border-color:var(--estavel);border-width:2px}
+.vs h3{font-size:16px;margin-bottom:4px}
+.vs .tag{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:14px}
+.vs dl{display:flex;flex-direction:column;gap:14px;margin:18px 0 0}
+.vs dt{font-size:13px;color:var(--muted)}
+.vs dd{margin:0;font-family:var(--disp);font-size:30px;font-weight:600;letter-spacing:-.02em;line-height:1}
+.vs .ruim dd{color:var(--risco)}
+.vs .otimo dd{color:var(--bom)}
+.remate{margin-top:24px;font-size:17px;color:var(--ink);background:var(--surface-2);border-left:3px solid var(--estavel);border-radius:0 8px 8px 0;padding:16px 20px;max-width:72ch}
+
+/* barras */
+.barras{display:flex;flex-direction:column;gap:11px;position:relative}
+.barra{display:grid;grid-template-columns:minmax(148px,204px) minmax(0,1fr) 58px;gap:14px;align-items:center}
+.barra .rot{font-size:14px;color:var(--ink);text-align:right;line-height:1.3}
+.barra .rot em{font-style:normal;display:block;font-family:var(--mono);font-size:10.5px;color:var(--muted);line-height:1.35}
+.pista{position:relative;height:22px;background:var(--surface-2);border-radius:5px}
+.pista i{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:var(--risco);min-width:3px}
+.pista.fria i{background:var(--estavel)}
+.marca{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--ink-2);opacity:.5}
+.barra .num{font-family:var(--mono);font-size:15px;font-weight:500;font-variant-numeric:tabular-nums;text-align:right}
+.legenda{margin-top:20px;display:flex;flex-wrap:wrap;gap:18px;font-size:13px;color:var(--ink-2)}
+.legenda span{display:flex;align-items:center;gap:8px}
+.legenda i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;flex:none}
+.legenda i.ln{width:2px;height:15px;background:var(--ink-2);opacity:.5;display:inline-block;flex:none}
+
+/* tabela top 10 */
+.rolagem{overflow-x:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+.band.alt .rolagem{background:var(--plane)}
+table{border-collapse:collapse;width:100%;min-width:620px}
+th{font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:500;text-align:left;padding:13px 16px;border-bottom:1px solid var(--rule);white-space:nowrap}
+th.d{text-align:right}
+td{padding:12px 16px;border-bottom:1px solid var(--rule);font-size:14px;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+td.d{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+td.cod{font-family:var(--mono);font-size:13px;color:var(--ink-2)}
+.risco-cel{display:flex;align-items:center;justify-content:flex-end;gap:10px}
+.risco-cel i{width:56px;height:7px;border-radius:4px;background:var(--surface-2);position:relative;flex:none}
+.risco-cel i b{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--risco)}
+.saiu{font-family:var(--mono);font-size:12px;color:var(--risco)}
+.ficou{font-family:var(--mono);font-size:12px;color:var(--muted)}
+
+/* passos */
+.passos{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:18px;counter-reset:p}
+.passo{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px}
+.band.alt .passo{background:var(--plane)}
+.passo b{font-family:var(--mono);font-size:12px;color:var(--estavel);display:block;margin-bottom:8px}
+.passo h3{font-size:15px;margin-bottom:5px}
+.passo p{font-size:13.5px;color:var(--ink-2);line-height:1.5}
+
+.rodape{padding:30px 24px 44px;border-top:1px solid var(--rule)}
+.rodape .in{max-width:1020px;margin:0 auto;display:flex;flex-wrap:wrap;gap:10px 28px;align-items:baseline}
+.rodape p{font-size:13px;color:var(--muted)}
+.rodape code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);padding:2px 7px;border-radius:5px;color:var(--ink-2)}
+
+@media print{
+  body{background:#fff;color:#000}
+  .band,.capa{background:#fff!important;page-break-inside:avoid}
+  .stat,.vs .op,.passo,.rolagem{background:#fff!important}
+}
+</style>
+
+<header class="capa">
+  <div class="in" style="max-width:1020px;margin:0 auto">
+    <p class="eyebrow">Banco Avenida · Previsão de churn</p>
+    <h1>Um em cada cinco clientes cancelou a conta</h1>
+    <p class="sub">Uma árvore de decisão aprende com quem já saiu e aponta, entre os clientes
+    atuais, quem tem mais chance de sair — antes que saia.</p>
+    <div class="creds">
+      <span>Bank Customer Churn Dataset · Kaggle</span>
+      <span>scikit-learn · Árvore de Decisão</span>
+      <span>10.000 correntistas</span>
+    </div>
+  </div>
+</header>
+
+<section class="band">
+  <div class="in">
+    <p class="eyebrow">A base</p>
+    <h2>Com o que o modelo trabalha</h2>
+    <p class="sub">Dez mil correntistas de França, Alemanha e Espanha, cada um descrito por
+    onze características — idade, saldo, produtos contratados, tempo de casa e afins.</p>
+    <div class="stats" id="stats"></div>
+  </div>
+</section>
+
+<section class="band alt">
+  <div class="in">
+    <p class="eyebrow">O problema central</p>
+    <h2>Por que acurácia é a métrica errada aqui</h2>
+    <p class="sub">Como só 20,4% da base cancelou, um modelo que responde “ninguém vai sair”
+    para todo mundo acerta quase 8 em cada 10 vezes. E não serve para absolutamente nada.</p>
+    <div class="vs">
+      <div class="op">
+        <h3>Chutar que ninguém sai</h3>
+        <span class="tag">O espantalho</span>
+        <dl>
+          <div><dt>Acurácia</dt><dd>79,6%</dd></div>
+          <div class="ruim"><dt>Clientes que sairiam e foram avisados</dt><dd>0 de 407</dd></div>
+        </dl>
+      </div>
+      <div class="op bom">
+        <h3>A árvore de decisão</h3>
+        <span class="tag">O modelo do trabalho</span>
+        <dl>
+          <div><dt>Acurácia</dt><dd id="v-acc">—</dd></div>
+          <div class="otimo"><dt>Clientes que sairiam e foram avisados</dt><dd id="v-rec">—</dd></div>
+        </dl>
+      </div>
+    </div>
+    <p class="remate">O modelo tem acurácia <strong>menor</strong> que o espantalho e ainda
+    assim é o único dos dois que serve: ele encontra 8 em cada 10 clientes prestes a sair.
+    A métrica que importa chama-se <strong>recall</strong>.</p>
+  </div>
+</section>
+
+<section class="band">
+  <div class="in">
+    <p class="eyebrow">O resultado</p>
+    <h2>O que acontece com 2.000 clientes que o modelo nunca viu</h2>
+    <p class="sub">Estes clientes ficaram de fora do treino. É o teste honesto: o modelo dá a
+    nota sem nunca ter visto o desfecho.</p>
+    <div class="stats" id="resultado"></div>
+    <p class="remate" id="remate-res">—</p>
+  </div>
+</section>
+
+<section class="band alt">
+  <div class="in">
+    <p class="eyebrow">Análise dos dados</p>
+    <h2>Onde o churn se concentra</h2>
+    <p class="sub">Percentual de clientes que de fato cancelaram, dentro de cada grupo.
+    A linha vertical marca a média da base, 20,4%.</p>
+    <div class="barras" id="segs"></div>
+    <div class="legenda">
+      <span><i class="sw" style="background:var(--risco)"></i> Acima da média da base</span>
+      <span><i class="sw" style="background:var(--estavel)"></i> Abaixo da média</span>
+      <span><i class="ln"></i> Média da base: 20,4%</span>
+    </div>
+  </div>
+</section>
+
+<section class="band">
+  <div class="in">
+    <p class="eyebrow">Dentro do modelo</p>
+    <h2>No que a árvore se apoia para decidir</h2>
+    <p class="sub">Peso de cada característica nas decisões. Idade e número de produtos
+    respondem por três quartos do modelo; tempo de casa, salário e cartão quase não contam.</p>
+    <div class="barras" id="imps"></div>
+  </div>
+</section>
+
+<section class="band alt">
+  <div class="in">
+    <p class="eyebrow">A entrega</p>
+    <h2>Os dez clientes mais em risco</h2>
+    <p class="sub">É esta lista que a equipe de retenção recebe. São clientes de fora do treino,
+    então a última coluna é conferência de verdade: o modelo deu a nota sem conhecer o desfecho.</p>
+    <div class="rolagem">
+      <table>
+        <thead><tr>
+          <th>Cliente</th><th class="d">Risco</th><th class="d">Idade</th>
+          <th>País</th><th class="d">Produtos</th><th>Conta</th><th>Desfecho real</th>
+        </tr></thead>
+        <tbody id="top10"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="band">
+  <div class="in">
+    <p class="eyebrow">Método</p>
+    <h2>Como o modelo foi construído</h2>
+    <div class="passos">
+      <div class="passo">
+        <b>Passo 1</b>
+        <h3>Preparar os dados</h3>
+        <p>País e gênero viram colunas numéricas; o identificador do cliente sai do treino,
+        porque número de conta não prevê nada.</p>
+      </div>
+      <div class="passo">
+        <b>Passo 2</b>
+        <h3>Separar treino e teste</h3>
+        <p>80% para aprender, 20% guardados para avaliar. A proporção de churn é mantida
+        nos dois lados.</p>
+      </div>
+      <div class="passo">
+        <b>Passo 3</b>
+        <h3>Treinar com pesos</h3>
+        <p><code>class_weight="balanced"</code> dá mais peso a quem cancelou — sem isso a
+        árvore aprende a nunca sinalizar ninguém.</p>
+      </div>
+      <div class="passo">
+        <b>Passo 4</b>
+        <h3>Avaliar por recall</h3>
+        <p>Dos clientes que realmente saíram, quantos o modelo sinalizou a tempo. É o número
+        que decide se o trabalho valeu.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="rodape">
+  <div class="in">
+    <p>Banco Avenida é um nome fictício sobre o Bank Customer Churn Dataset (Kaggle, <code>gauravtopre</code>).</p>
+    <p>Reproduzir: <code>docker compose up -d site</code></p>
+  </div>
+</footer>
+
+<script>
+const RAW = /*DADOS*/null;
+const C = Object.fromEntries(RAW.colunas.map((c, i) => [c, i]));
+const B = RAW.clientes;
+const nf = new Intl.NumberFormat("pt-BR");
+const pf = (v, d = 1) => new Intl.NumberFormat("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
+
+const T = RAW.threshold;
+const M = RAW.metricas_teste;
+const mediaBase = RAW.taxa_churn_base;
+const cancelaram = B.reduce((s, c) => s + c[C.churn], 0);
+
+/* ---------- a base ---------- */
+document.getElementById("stats").innerHTML = [
+  ["", nf.format(RAW.n_clientes), "correntistas na base"],
+  ["vermelho", nf.format(cancelaram), "cancelaram a conta"],
+  ["vermelho", pf(100 * mediaBase, 1) + "%", "taxa de churn do banco"],
+  ["", "11", "características por cliente"]
+].map(([cls, v, s]) => `<div class="stat ${cls}"><b>${v}</b><span>${s}</span></div>`).join("");
+
+/* ---------- o confronto ---------- */
+document.getElementById("v-acc").textContent = pf(100 * M.acuracia, 1) + "%";
+document.getElementById("v-rec").textContent = nf.format(M.tp) + " de " + nf.format(M.tp + M.fn);
+
+/* ---------- o resultado ---------- */
+document.getElementById("resultado").innerHTML = [
+  ["azul", pf(100 * M.recall, 1) + "%", "dos que cancelaram foram sinalizados <strong>antes</strong>"],
+  ["", nf.format(M.tp), "clientes alcançados a tempo"],
+  ["vermelho", nf.format(M.fn), "escaparam sem nenhum aviso"],
+  ["", nf.format(M.fp), "falsos alarmes: ligações para quem ia ficar"]
+].map(([cls, v, s]) => `<div class="stat ${cls}"><b>${v}</b><span>${s}</span></div>`).join("");
+
+document.getElementById("remate-res").innerHTML =
+  `Dos ${nf.format(M.tp + M.fn)} clientes que cancelaram, o modelo apontou ${nf.format(M.tp)}.
+   O preço são ${nf.format(M.fp)} conversas com gente que ia ficar de qualquer jeito — um preço
+   barato, se reter um cliente vale mais que um telefonema.`;
+
+/* ---------- onde o churn se concentra ---------- */
+const GRUPOS = [
+  ["4 produtos", "produtos contratados", c => c[C.products_number] === 4],
+  ["3 produtos", "produtos contratados", c => c[C.products_number] === 3],
+  ["2 produtos", "produtos contratados", c => c[C.products_number] === 2],
+  ["50 a 59 anos", "faixa etária", c => c[C.age] >= 50 && c[C.age] < 60],
+  ["40 a 49 anos", "faixa etária", c => c[C.age] >= 40 && c[C.age] < 50],
+  ["Até 39 anos", "faixa etária", c => c[C.age] < 40],
+  ["Alemanha", "país", c => c[C.country] === "Germany"],
+  ["França", "país", c => c[C.country] === "France"],
+  ["Conta inativa", "uso da conta", c => c[C.active_member] === 0],
+  ["Conta ativa", "uso da conta", c => c[C.active_member] === 1]
+];
+
+const dados = GRUPOS.map(([rot, ctx, fn]) => {
+  const g = B.filter(fn);
+  return { rot, ctx, n: g.length, taxa: g.length ? g.reduce((s, c) => s + c[C.churn], 0) / g.length : 0 };
+}).sort((a, b) => b.taxa - a.taxa);
+
+const escala = Math.max(...dados.map(d => d.taxa));
+document.getElementById("segs").innerHTML = dados.map(d => `
+  <div class="barra">
+    <span class="rot">${d.rot}<em>${d.ctx} · ${nf.format(d.n)} clientes</em></span>
+    <span class="pista${d.taxa < mediaBase ? " fria" : ""}">
+      <i style="width:${(100 * d.taxa / escala).toFixed(2)}%"></i>
+      <span class="marca" style="left:${(100 * mediaBase / escala).toFixed(2)}%"></span>
+    </span>
+    <span class="num">${pf(100 * d.taxa, 0)}%</span>
+  </div>`).join("");
+
+/* ---------- importâncias ---------- */
+const NOMES = {
+  age: "Idade", products_number: "Nº de produtos", balance: "Saldo em conta",
+  active_member: "Cliente ativo", country_Germany: "Mora na Alemanha",
+  country_Spain: "Mora na Espanha", gender_Male: "Gênero masculino",
+  credit_score: "Score de crédito", tenure: "Tempo de casa",
+  estimated_salary: "Salário estimado", credit_card: "Tem cartão de crédito"
+};
+const topImp = RAW.importancias.slice(0, 6);
+const maxImp = topImp[0][1];
+document.getElementById("imps").innerHTML = topImp.map(([f, v]) => `
+  <div class="barra">
+    <span class="rot">${NOMES[f] || f}</span>
+    <span class="pista fria"><i style="width:${(100 * v / maxImp).toFixed(2)}%"></i></span>
+    <span class="num">${pf(100 * v, 1)}%</span>
+  </div>`).join("");
+
+/* ---------- top 10 ---------- */
+const PAIS = { France: "França", Germany: "Alemanha", Spain: "Espanha" };
+// Só clientes fora do treino: nas linhas de treino o modelo decorou o desfecho e a
+// coluna de conferência viraria enfeite, não verificação.
+const top10 = B.filter(c => c[C.teste]).sort((a, b) =>
+  b[C.risco_churn] - a[C.risco_churn] || b[C.balance] - a[C.balance]).slice(0, 10);
+
+document.getElementById("top10").innerHTML = top10.map(c => `
+  <tr>
+    <td class="cod">${c[C.customer_id]}</td>
+    <td class="d"><span class="risco-cel"><i><b style="width:${(100 * c[C.risco_churn]).toFixed(0)}%"></b></i>${pf(100 * c[C.risco_churn], 0)}%</span></td>
+    <td class="d">${c[C.age]}</td>
+    <td>${PAIS[c[C.country]]}</td>
+    <td class="d">${c[C.products_number]}</td>
+    <td>${c[C.active_member] ? "Ativa" : "Inativa"}</td>
+    <td>${c[C.churn] ? '<span class="saiu">cancelou</span>' : '<span class="ficou">continua</span>'}</td>
+  </tr>`).join("");
+</script>

@@ -2,7 +2,7 @@
 models/*.pkl
 models/*.csv
 models/*.json
-models/painel.html
+models/*.html
 
 # Ambientes virtuais Python
 .venv/

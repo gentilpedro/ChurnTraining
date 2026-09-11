@@ -41,8 +41,8 @@ Se preferir o arquivo oficial, baixe do Kaggle e salve como `./data/bank_custome
 5. Treina uma Árvore de Decisão com `class_weight="balanced"` e avalia no conjunto de teste.
 6. Exporta o modelo em `models/churn_model.pkl` e a lista de clientes em risco em
    `models/clientes_em_risco.csv`.
-7. Pontua a base inteira em `models/dashboard_data.json` e injeta esses dados no template
-   `painel/painel.html`, gerando o painel `models/painel.html`.
+7. Pontua a base inteira em `models/dashboard_data.json` e injeta esses dados em cada template
+   de `painel/`, gerando `models/painel.html` e `models/resumo.html`.
 
 ### Por que o foco não é acurácia
 
@@ -77,12 +77,16 @@ bundle = joblib.load("models/churn_model.pkl")
 bundle["model"].predict_proba(novos[bundle["features"]])[:, 1]
 ```
 
-## O painel: `models/painel.html`
+## As páginas geradas
 
-O treino também monta um painel para o **Banco Avenida** (nome fictício sobre os dados do
-Kaggle). É um arquivo HTML só, com as notas de todos os 10.000 clientes embutidas: dá para
-servir em <http://localhost:8080> com o serviço `site`, ou simplesmente abrir com duplo
-clique — sem servidor e sem internet, funciona igual.
+O treino termina montando duas páginas para o **Banco Avenida** (nome fictício sobre os dados
+do Kaggle), a partir dos mesmos dados: uma para operar, outra para apresentar.
+
+### `models/painel.html` — o console completo
+
+Um arquivo HTML só, com as notas de todos os 10.000 clientes embutidas: dá para servir em
+<http://localhost:8080> com o serviço `site`, ou simplesmente abrir com duplo clique —
+sem servidor e sem internet, funciona igual.
 
 O que dá para fazer nele:
 
@@ -98,9 +102,31 @@ O que dá para fazer nele:
 As métricas do modelo no painel são sempre calculadas no conjunto de teste e não respondem aos
 filtros de país, atividade ou busca — só ao corte.
 
-O template fica em `painel/painel.html` com o marcador `/*DADOS*/null` no lugar dos dados;
-o passo 7 troca o marcador pelo JSON e escreve o resultado em `models/painel.html`. Para mexer
-no visual, edite o template e rode o treino de novo — o volume é montado, não precisa rebuild.
+### `models/resumo.html` — a versão de apresentação
+
+Para mostrar o trabalho, o painel completo atrapalha: slider, filtros e 10.000 linhas de tabela
+são coisas para operar, não para projetar. O `resumo.html` conta a mesma história sem controle
+nenhum, com número grande e uma ideia por faixa:
+
+1. **A base** — 10.000 clientes, 2.037 cancelamentos, 20,4% de churn.
+2. **Por que acurácia engana** — o espantalho (“ninguém sai”, 79,6% de acurácia, 0 clientes
+   avisados) lado a lado com a árvore (76,1% de acurácia, 319 dos 407 avisados).
+3. **O resultado** — recall, alcançados, escapados e falsos alarmes no conjunto de teste.
+4. **Onde o churn se concentra** — dez grupos ranqueados contra a média da base.
+5. **No que a árvore se apoia** — as seis características de maior peso.
+6. **Os dez mais em risco** — só clientes de fora do treino, para a coluna de desfecho ser
+   conferência de verdade em vez de memorização.
+7. **Como foi construído** — os quatro passos do método.
+
+A página também tem estilo de impressão, então dá para gerar PDF pelo Ctrl+P sem sair tudo preto.
+
+### Mexendo nas páginas
+
+Os templates ficam em `painel/*.html`, cada um com o marcador `/*DADOS*/null` no lugar dos
+dados. O passo 7 troca o marcador pelo JSON e escreve o resultado em `models/`, mantendo o
+nome do arquivo — jogar um `.html` novo nessa pasta basta para ele virar mais uma página.
+Para mexer no visual, edite o template e rode o treino de novo: o volume é montado, não
+precisa rebuild.
 
 ## Como rodar
 
@@ -113,7 +139,10 @@ docker compose up -d site
 ```
 
 O `site` espera o `trainer` terminar bem antes de subir — treino que falha não vira página no ar.
-Quando voltar o prompt, o painel está em **<http://localhost:8080>**.
+Quando voltar o prompt:
+
+- **<http://localhost:8080>** — o painel completo, para operar.
+- **<http://localhost:8080/resumo.html>** — o resumo, para apresentar.
 
 **Só treinar,** sem subir servidor nenhum:
 
@@ -168,7 +197,7 @@ Variáveis de ambiente disponíveis:
 | `DATA_DIR`  | `data`                         | Pasta do cache do CSV (usada só para montar o `DATA_PATH` padrão).                       |
 | `DATA_PATH` | `data/bank_customer_churn.csv` | Caminho do CSV (lido se existir, senão baixado e salvo aí).                              |
 | `DATA_URL`  | espelho público                 | De onde baixar quando não há CSV local.                                                  |
-| `TEMPLATE_PATH` | `painel/painel.html`       | Template do painel. Se o arquivo não existir, o treino avisa e pula essa etapa.          |
+| `PANEL_DIR` | `painel`                       | Pasta dos templates. Cada `.html` dela vira uma página em `models/`.                 |
 
 ```bash
 # rede mais larga: pega mais clientes em risco, aceitando mais falso alarme
@@ -184,7 +213,8 @@ decorar a base e generalizar.
 | Arquivo                | Papel                                                                              |
 | ---------------------- | ---------------------------------------------------------------------------------- |
 | `train_model.py`     | Pipeline completo: dataset → treino → avaliação → clientes em risco → painel. |
-| `painel/painel.html` | Template do painel do Banco Avenida, com `/*DADOS*/null` no lugar dos dados.      |
+| `painel/painel.html` | Template do painel completo, com `/*DADOS*/null` no lugar dos dados.              |
+| `painel/resumo.html` | Template da versão de apresentação, mesmo marcador e mesmos dados.               |
 | `painel/nginx.conf`  | Config do serviço `site`: raiz em `models/`, índice `painel.html`, sem cache.  |
 | `requirements.txt`   | pandas, scikit-learn, joblib, numpy.                                               |
 | `Dockerfile`         | Imagem`python:3.12-slim` com as dependências.                                   |
