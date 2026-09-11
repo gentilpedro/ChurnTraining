@@ -1,243 +1,848 @@
-# Churn Training
 
-Projeto de **treinamento de Machine Learning** para previsão de churn (Bank Customer Churn Dataset).
-O modelo aprende com os clientes que **já saíram** do banco e usa esse padrão para apontar,
-entre os clientes atuais, quais têm mais chance de sair.
-Sem API e sem servidor: o treino termina gerando um painel HTML autocontido com os dados já
-embutidos. Roda inteiramente em Docker, nada de Python instalado na máquina.
 
-## O dataset
+# Sistema de Previsão de Churn
 
-[Bank Customer Churn Dataset](https://www.kaggle.com/datasets/gauravtopre/bank-customer-churn-dataset)
-(Kaggle, `gauravtopre`): 10.000 clientes de banco, 20,4% deles cancelaram.
+## 1. Qual dataset foi escolhido e qual problema ele representa?
 
-| Coluna               | Descrição                                                               |
-| -------------------- | ------------------------------------------------------------------------- |
-| `customer_id`      | Identificador (não entra no treino, só identifica quem está em risco). |
-| `credit_score`     | Score de crédito.                                                        |
-| `country`          | França, Alemanha ou Espanha.                                             |
-| `gender`           | Female / Male.                                                            |
-| `age`              | Idade.                                                                    |
-| `tenure`           | Anos como cliente.                                                        |
-| `balance`          | Saldo em conta.                                                           |
-| `products_number`  | Quantidade de produtos contratados.                                       |
-| `credit_card`      | Tem cartão de crédito (0/1).                                            |
-| `active_member`    | Cliente ativo (0/1).                                                      |
-| `estimated_salary` | Salário estimado.                                                        |
-| `churn`            | **Target**: 1 = cancelou, 0 = ativo.                                |
+Foi utilizado o **Bank Customer Churn Dataset**, disponível no Kaggle.
 
-O download do Kaggle exige token de API, então o script busca o CSV de um espelho público e
-**guarda em `./data/bank_customer_churn.csv`** — baixa uma vez só, as execuções seguintes leem do disco.
+O dataset possui informações de aproximadamente **10.000 clientes bancários** e representa um problema de **Customer Churn Prediction**, ou seja, identificar clientes que possuem maior probabilidade de abandonar o banco.
 
-Se preferir o arquivo oficial, baixe do Kaggle e salve como `./data/bank_customer_churn.csv`
-(mesmo nome); o script detecta o arquivo e pula o download.
+Na base utilizada, aproximadamente **20,4% dos clientes cancelaram seus serviços**.
 
-## O que ele faz
+O objetivo do modelo é utilizar as características dos clientes para identificar possíveis clientes em risco de cancelamento.
 
-1. Carrega o dataset (cache local em `data/`, ou baixa na primeira vez).
-2. Descarta linhas nulas e separa `customer_id` do conjunto de features.
-3. Transforma `country` e `gender` em colunas numéricas (one-hot) — 11 features no total.
-4. Separa treino/teste (80/20, `random_state=42`, estratificado pelo churn).
-5. Treina uma Árvore de Decisão com `class_weight="balanced"` e avalia no conjunto de teste.
-6. Exporta o modelo em `models/churn_model.pkl` e a lista de clientes em risco em
-   `models/clientes_em_risco.csv`.
-7. Pontua a base inteira em `models/dashboard_data.json` e injeta esses dados em cada template
-   de `painel/`, gerando `models/painel.html` e `models/resumo.html`.
+---
 
-### Por que o foco não é acurácia
+## 2. Qual é a variável-alvo (Target)?
 
-Só 20,4% da base cancelou. Um modelo que chuta "ninguém sai" para todo mundo já acerta 79,6%
-e é **inútil** — nunca sinaliza ninguém. Por isso o treino usa `class_weight="balanced"`
-(dá mais peso a quem cancelou) e a avaliação olha:
+A variável-alvo é:
 
-- **Recall** — dos clientes que realmente cancelaram, quantos o modelo conseguiu sinalizar. É a métrica principal.
-- **Precisão** — dos que ele sinalizou, quantos cancelaram mesmo. Mede o desperdício de esforço em falso alarme.
-- **Falsos alarmes / escaparam** — os dois erros em número absoluto.
+```text
+churn
+```
 
-## Saída: `models/clientes_em_risco.csv`
+Ela representa se o cliente cancelou ou não o serviço.
 
-Depois de treinar, o script pontua a base inteira e exporta os clientes com risco acima do
-threshold, do maior para o menor:
+| Valor | Significado              |
+| ----: | ------------------------ |
+|   `0` | Cliente permaneceu ativo |
+|   `1` | Cliente cancelou         |
 
-| Coluna          | Descrição                                                  |
-| --------------- | ------------------------------------------------------------ |
-| `customer_id` | Quem é o cliente.                                           |
-| `risco_churn` | Probabilidade estimada de sair (0 a 1).                      |
-| demais colunas  | Os dados do cliente, para entender o motivo do alerta.       |
-| `churn`       | O que de fato aconteceu no dataset — serve de conferência. |
-
-> As linhas que entraram no treino recebem nota otimista. As métricas confiáveis são as do
-> passo 5, calculadas só no conjunto de teste.
-
-O `.pkl` guarda um dicionário com `model`, `features` e `threshold` — a ordem das colunas do
-one-hot precisa ser a mesma na hora de pontuar clientes novos:
+No código:
 
 ```python
-bundle = joblib.load("models/churn_model.pkl")
-bundle["model"].predict_proba(novos[bundle["features"]])[:, 1]
+y = df_clean["churn"].astype(int)
 ```
 
-## As páginas geradas
+A variável `y` representa aquilo que o modelo deverá aprender a prever.
 
-O treino termina montando duas páginas para o **Banco Avenida** (nome fictício sobre os dados
-do Kaggle), a partir dos mesmos dados: uma para operar, outra para apresentar.
+---
 
-### `models/painel.html` — o console completo
+## 3. Quais são as classes possíveis?
 
-Um arquivo HTML só, com as notas de todos os 10.000 clientes embutidas: dá para servir em
-<http://localhost:8080> com o serviço `site`, ou simplesmente abrir com duplo clique —
-sem servidor e sem internet, funciona igual.
+O problema é uma **classificação binária**.
 
-O que dá para fazer nele:
+Existem duas classes:
 
-- **Mexer no corte de risco** e ver recall, precisão, falsos alarmes e as duas listas de
-  clientes recalcularem ao vivo. É a forma mais direta de sentir o custo do threshold.
-- **Separar a carteira** entre quem está em risco e quem está estável, com busca por
-  `customer_id`, ordenação por qualquer coluna e filtros de país e atividade.
-- **Ver onde o churn se concentra** por faixa etária, número de produtos, país, uso da conta,
-  saldo e tempo de casa — taxa real do histórico, não previsão.
-- **Ligar “só quem ficou fora do treino”**, que restringe a carteira aos 2.000 clientes do
-  conjunto de teste. É a visão sem a nota otimista das linhas de treino.
-
-As métricas do modelo no painel são sempre calculadas no conjunto de teste e não respondem aos
-filtros de país, atividade ou busca — só ao corte.
-
-### `models/resumo.html` — a versão de apresentação
-
-Para mostrar o trabalho, o painel completo atrapalha: slider, filtros e 10.000 linhas de tabela
-são coisas para operar, não para projetar. O `resumo.html` conta a mesma história sem controle
-nenhum, com número grande e uma ideia por faixa:
-
-1. **A base** — 10.000 clientes, 2.037 cancelamentos, 20,4% de churn.
-2. **Por que acurácia engana** — o espantalho (“ninguém sai”, 79,6% de acurácia, 0 clientes
-   avisados) lado a lado com a árvore (76,1% de acurácia, 319 dos 407 avisados).
-3. **O resultado** — recall, alcançados, escapados e falsos alarmes no conjunto de teste.
-4. **Onde o churn se concentra** — dez grupos ranqueados contra a média da base.
-5. **No que a árvore se apoia** — as seis características de maior peso.
-6. **Os dez mais em risco** — só clientes de fora do treino, para a coluna de desfecho ser
-   conferência de verdade em vez de memorização.
-7. **Como foi construído** — os quatro passos do método.
-
-A página também tem estilo de impressão, então dá para gerar PDF pelo Ctrl+P sem sair tudo preto.
-
-### Mexendo nas páginas
-
-Os templates ficam em `painel/*.html`, cada um com o marcador `/*DADOS*/null` no lugar dos
-dados. O passo 7 troca o marcador pelo JSON e escreve o resultado em `models/`, mantendo o
-nome do arquivo — jogar um `.html` novo nessa pasta basta para ele virar mais uma página.
-Para mexer no visual, edite o template e rode o treino de novo: o volume é montado, não
-precisa rebuild.
-
-## Como rodar
-
-```bash
-./subir.sh
+```text
+0 → Cliente ativo
+1 → Cliente que cancelou
 ```
 
-Treina, publica o painel e abre ele no navegador. No Windows, rode pelo Git Bash
-(`bash subir.sh`). As opções:
+Portanto, o modelo precisa decidir entre essas duas possibilidades.
 
-| Comando                | O que faz                                                 |
-| ---------------------- | ----------------------------------------------------------- |
-| `./subir.sh`         | Treina, sobe o site e abre o painel no navegador.            |
-| `./subir.sh --sem-abrir` | Idem, sem abrir o navegador.                             |
-| `./subir.sh --rebuild` | Refaz a imagem antes. Use ao mexer no `requirements.txt`. |
-| `./subir.sh --parar` | Derruba o site.                                              |
+Além disso, o modelo fornece uma **probabilidade de churn**, por exemplo:
 
-O treino roda em primeiro plano de propósito, para as métricas do modelo aparecerem na tela;
-se ele falhar, o script para ali e o site não sobe servindo uma página velha.
-
-### Na mão, sem o script
-
-São dois serviços: `trainer` treina e gera os artefatos, `site` serve o painel.
-
-**Treinar e subir o site de uma vez:**
-
-```bash
-docker compose up -d site
+```text
+Cliente 1001 → 0.82 → 82% de probabilidade de sair
+Cliente 1002 → 0.17 → 17% de probabilidade de sair
 ```
 
-O `site` espera o `trainer` terminar bem antes de subir — treino que falha não vira página no ar.
-Quando voltar o prompt:
+---
 
-- **<http://localhost:8080>** — o painel completo, para operar.
-- **<http://localhost:8080/resumo.html>** — o resumo, para apresentar.
+## 4. Quais informações serão utilizadas como entrada do modelo?
 
-**Só treinar,** sem subir servidor nenhum:
+As informações utilizadas como entrada são:
 
-```bash
-docker compose run --rm trainer
+* `credit_score`
+* `country`
+* `gender`
+* `age`
+* `tenure`
+* `balance`
+* `products_number`
+* `credit_card`
+* `active_member`
+* `estimated_salary`
+
+O `customer_id` não é utilizado para treinar o modelo, pois ele serve apenas para identificar o cliente.
+
+No código:
+
+```python
+X = pd.get_dummies(
+    df_clean.drop(columns=["customer_id", "churn"]),
+    columns=["country", "gender"],
+    drop_first=True,
+)
 ```
 
-Os artefatos aparecem em `./models` na sua máquina (volume montado) e o
-`models/painel.html` abre com duplo clique, sem precisar do servidor.
+As informações `country` e `gender` são categóricas. Por isso, são transformadas em valores numéricos através de **One-Hot Encoding**.
 
-**Só servir,** reaproveitando o último treino:
+---
 
-```bash
-docker compose up -d --no-deps site
+## 5. Qual modelo de Machine Learning foi utilizado?
+
+Foi utilizado um:
+
+```text
+DecisionTreeClassifier
 ```
 
-**Derrubar:**
+Ou seja, uma **Árvore de Decisão**.
 
-```bash
-docker compose down
+A configuração utilizada é:
+
+```python
+model = DecisionTreeClassifier(
+    max_depth=6,
+    min_samples_leaf=20,
+    class_weight="balanced",
+    random_state=42,
+)
 ```
 
-A porta é publicada em `127.0.0.1:8080`, então o painel responde só na sua máquina e não fica
-exposto na rede local. Como a raiz do site é a pasta `models/`, o `clientes_em_risco.csv` também
-fica baixável em <http://localhost:8080/clientes_em_risco.csv>.
+O `class_weight="balanced"` é importante porque existe uma diferença entre a quantidade de clientes que permaneceram e a quantidade que cancelaram.
 
-Primeira execução baixa as imagens, instala as dependências e busca o dataset;
-as seguintes reaproveitam o cache da imagem e o CSV em `./data`.
+O modelo também utiliza:
 
-## Experimentando
-
-`train_model.py` está montado como volume — edite os hiperparâmetros e rode de novo,
-sem rebuild:
-
-```bash
-docker compose run --rm trainer
+```text
+80% → treinamento
+20% → teste
 ```
 
-Só refaça a imagem se mudar o `requirements.txt`:
+Essa divisão é feita através de:
 
-```bash
-docker compose build
+```python
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.2,
+    random_state=42,
+    stratify=y
+)
 ```
 
-Variáveis de ambiente disponíveis:
+---
 
-| Variável     | Padrão                          | Papel                                                                                      |
-| ------------- | -------------------------------- | ------------------------------------------------------------------------------------------ |
-| `THRESHOLD` | `0.5`                          | Corte de probabilidade. Mais baixo = sinaliza mais gente (mais recall, mais falso alarme). |
-| `RISK_TOP`  | `200`                          | Quantos clientes de maior risco exportar no CSV.                                           |
-| `MODEL_DIR` | `models`                       | Diretório de saída dos artefatos.                                                        |
-| `DATA_DIR`  | `data`                         | Pasta do cache do CSV (usada só para montar o `DATA_PATH` padrão).                       |
-| `DATA_PATH` | `data/bank_customer_churn.csv` | Caminho do CSV (lido se existir, senão baixado e salvo aí).                              |
-| `DATA_URL`  | espelho público                 | De onde baixar quando não há CSV local.                                                  |
-| `PANEL_DIR` | `painel`                       | Pasta dos templates. Cada `.html` dela vira uma página em `models/`.                 |
+# 6. Quem utilizaria essa aplicação?
 
-```bash
-# rede mais larga: pega mais clientes em risco, aceitando mais falso alarme
-docker compose run --rm -e THRESHOLD=0.35 -e RISK_TOP=500 trainer
+A aplicação poderia ser utilizada principalmente por:
+
+* Gerentes bancários;
+* Equipes de retenção;
+* Analistas de dados;
+* Equipes de relacionamento com clientes;
+* Gestores comerciais.
+
+O objetivo seria identificar antecipadamente os clientes que apresentam maior probabilidade de abandonar o banco.
+
+Por exemplo:
+
+```text
+Cliente 8542
+Probabilidade de churn: 87%
+
+→ Entrar em contato
+→ Oferecer benefício
+→ Verificar satisfação
+→ Tentar evitar o cancelamento
 ```
 
-No código, os hiperparâmetros da árvore ficam em `DecisionTreeClassifier`
-(`max_depth=6`, `min_samples_leaf=20`) — mexer neles muda o equilíbrio entre
-decorar a base e generalizar.
+---
 
-## Estrutura
+# 7. O que a aplicação faz com a classificação?
 
-| Arquivo                | Papel                                                                              |
-| ---------------------- | ---------------------------------------------------------------------------------- |
-| `subir.sh`           | Sobe a aplicação: treina, publica o painel e mostra os endereços.             |
-| `train_model.py`     | Pipeline completo: dataset → treino → avaliação → clientes em risco → painel. |
-| `painel/painel.html` | Template do painel completo, com `/*DADOS*/null` no lugar dos dados.              |
-| `painel/resumo.html` | Template da versão de apresentação, mesmo marcador e mesmos dados.               |
-| `painel/nginx.conf`  | Config do serviço `site`: raiz em `models/`, índice `painel.html`, sem cache.  |
-| `requirements.txt`   | pandas, scikit-learn, joblib, numpy.                                               |
-| `Dockerfile`         | Imagem`python:3.12-slim` com as dependências.                                   |
-| `docker-compose.yml` | Serviços`trainer` (treino) e `site` (nginx na 8080) + os volumes.           |
-| `data/`              | Cache do CSV do dataset (ignorado no git).                                         |
-| `models/`            | Saída:`churn_model.pkl`, `clientes_em_risco.csv`, `dashboard_data.json` e `painel.html` (ignorados no git). |
+O modelo calcula uma probabilidade de churn para cada cliente.
+
+Por exemplo:
+
+```text
+Cliente A → 91%
+Cliente B → 78%
+Cliente C → 63%
+Cliente D → 21%
+Cliente E → 8%
+```
+
+Existe um **threshold**, ou corte de risco.
+
+O padrão utilizado no projeto é:
+
+```text
+Threshold = 0.50
+```
+
+Assim:
+
+```text
+probabilidade >= 50% → Em risco
+probabilidade < 50%  → Estável
+```
+
+O threshold pode ser alterado no painel.
+
+Isso permite controlar o equilíbrio entre:
+
+* Recall;
+* Precisão;
+* Falsos positivos;
+* Clientes que escaparam da identificação.
+
+---
+
+# 8. Como os dados chegam até o HTML?
+
+Essa é uma das partes mais interessantes do projeto.
+
+O sistema **não possui uma API HTTP tradicional** para buscar os clientes.
+
+Em vez disso, o Python treina o modelo e gera arquivos que serão utilizados pelo HTML.
+
+O fluxo é:
+
+```text
+Dataset
+   │
+   ▼
+Python / Pandas
+   │
+   ▼
+Treinamento do modelo
+   │
+   ▼
+Decision Tree
+   │
+   ▼
+Probabilidade de churn
+   │
+   ├──────────────► clientes_em_risco.csv
+   │
+   ├──────────────► churn_model.pkl
+   │
+   └──────────────► dashboard_data.json
+                              │
+                              ▼
+                         painel.html
+                              │
+                              ▼
+                        JavaScript
+                              │
+                              ▼
+                            Tela
+```
+
+---
+
+# 9. Como o Python gera os dados do Dashboard?
+
+Depois de treinar o modelo, o código calcula a probabilidade de churn de todos os clientes:
+
+```python
+dash = df_clean.copy()
+
+dash["risco_churn"] = model.predict_proba(X)[:, 1]
+```
+
+Aqui acontece algo importante.
+
+O método:
+
+```python
+model.predict_proba(X)
+```
+
+retorna a probabilidade de cada classe.
+
+O código:
+
+```python
+[:, 1]
+```
+
+pega a probabilidade da classe `1`, que representa:
+
+```text
+Cliente cancelou
+```
+
+Por exemplo:
+
+```text
+Cliente      Probabilidade
+10001        0.87
+10002        0.12
+10003        0.64
+```
+
+---
+
+# 10. O Python transforma os dados em JSON
+
+Depois disso, o projeto monta um objeto contendo:
+
+* threshold;
+* quantidade de clientes;
+* taxa de churn;
+* métricas;
+* importância das features;
+* informações dos clientes.
+
+Por exemplo, conceitualmente:
+
+```json
+{
+  "threshold": 0.5,
+  "n_clientes": 10000,
+  "taxa_churn_base": 0.204,
+  "metricas_teste": {
+    "acuracia": 0.81,
+    "recall": 0.72,
+    "precisao": 0.64
+  },
+  "clientes": [
+    [10001, 0.87, 650, "Germany", "Male", 42, 3, 12500.50],
+    [10002, 0.12, 720, "France", "Female", 35, 7, 3200.00]
+  ]
+}
+```
+
+No projeto isso é feito através de:
+
+```python
+payload = json.dumps(
+    {
+        "threshold": THRESHOLD,
+        "n_clientes": len(dash),
+        "taxa_churn_base": round(float(y.mean()), 4),
+        "metricas_teste": {
+            ...
+        },
+        "importancias": ...,
+        "colunas": colunas_dash,
+        "clientes": linhas,
+    },
+    ensure_ascii=False,
+    separators=(",", ":"),
+)
+```
+
+Depois o JSON é salvo em:
+
+```text
+models/dashboard_data.json
+```
+
+---
+
+# 11. Mas como o HTML recebe esse JSON?
+
+Aqui está a parte principal.
+
+O projeto possui um template HTML:
+
+```text
+painel/painel.html
+```
+
+Dentro dele existe:
+
+```javascript
+const RAW = /*DADOS*/null;
+```
+
+Esse:
+
+```text
+/*DADOS*/
+```
+
+é um **marcador**.
+
+O Python abre o HTML e substitui esse marcador pelo JSON gerado.
+
+No código Python:
+
+```python
+with open(template_path, encoding="utf-8") as f:
+    pagina = f.read().replace("/*DADOS*/null", dados_js)
+```
+
+Ou seja, antes:
+
+```javascript
+const RAW = /*DADOS*/null;
+```
+
+Depois da execução do Python, o HTML fica conceitualmente assim:
+
+```javascript
+const RAW = {
+    "threshold": 0.5,
+    "n_clientes": 10000,
+    "taxa_churn_base": 0.204,
+    "clientes": [
+        [10001, 0.87, 650, "Germany", "Male", 42],
+        [10002, 0.12, 720, "France", "Female", 35]
+    ]
+};
+```
+
+Então o navegador já recebe os dados **dentro do próprio HTML**.
+
+---
+
+# 12. Como o JavaScript utiliza esses dados?
+
+Depois que o JSON foi colocado dentro do HTML, o JavaScript consegue acessar os dados normalmente.
+
+O código do projeto faz:
+
+```javascript
+const RAW = /*DADOS*/null;
+
+const C = Object.fromEntries(
+    RAW.colunas.map((c, i) => [c, i])
+);
+
+const B = RAW.clientes;
+```
+
+`RAW` contém todas as informações geradas pelo Python.
+
+E:
+
+```javascript
+RAW.clientes
+```
+
+contém os clientes.
+
+Então:
+
+```javascript
+const B = RAW.clientes;
+```
+
+coloca todos os clientes na variável `B`.
+
+---
+
+# 13. Como ele sabe qual posição representa cada coluna?
+
+O projeto utiliza uma estrutura chamada:
+
+```javascript
+C
+```
+
+Ela transforma o nome da coluna em seu índice.
+
+Por exemplo:
+
+```text
+customer_id       → 0
+risco_churn       → 1
+credit_score      → 2
+country           → 3
+gender            → 4
+age               → 5
+```
+
+Isso é necessário porque o JSON utiliza uma estrutura mais compacta:
+
+```json
+[
+    10001,
+    0.87,
+    650,
+    "Germany",
+    "Male",
+    42
+]
+```
+
+Em vez de:
+
+```json
+{
+    "customer_id": 10001,
+    "risco_churn": 0.87,
+    "credit_score": 650,
+    "country": "Germany",
+    "gender": "Male",
+    "age": 42
+}
+```
+
+Isso reduz o tamanho do arquivo.
+
+---
+
+# 14. Como o cliente aparece na tabela?
+
+O JavaScript pega os dados:
+
+```javascript
+const B = RAW.clientes;
+```
+
+Depois filtra os clientes de acordo com o threshold.
+
+Conceitualmente:
+
+```javascript
+cliente[C.risco_churn] >= estado.t
+```
+
+Se:
+
+```text
+risco_churn = 0.82
+threshold = 0.50
+```
+
+então:
+
+```text
+0.82 >= 0.50
+```
+
+O cliente é considerado:
+
+```text
+EM RISCO
+```
+
+Se:
+
+```text
+risco_churn = 0.23
+```
+
+então:
+
+```text
+0.23 < 0.50
+```
+
+e ele fica:
+
+```text
+ESTÁVEL
+```
+
+---
+
+# 15. O usuário consegue alterar o threshold sem treinar novamente?
+
+Sim.
+
+Essa é uma característica interessante do projeto.
+
+O Python fornece a probabilidade de cada cliente:
+
+```text
+Cliente A → 82%
+Cliente B → 61%
+Cliente C → 43%
+Cliente D → 17%
+```
+
+O navegador recebe essas probabilidades.
+
+Quando o usuário altera o threshold:
+
+```text
+50%
+```
+
+para:
+
+```text
+70%
+```
+
+o JavaScript simplesmente refaz o filtro.
+
+Por exemplo:
+
+### Threshold = 50%
+
+```text
+82% → Risco
+61% → Risco
+43% → Estável
+17% → Estável
+```
+
+### Threshold = 70%
+
+```text
+82% → Risco
+61% → Estável
+43% → Estável
+17% → Estável
+```
+
+Ou seja:
+
+> **O modelo não é treinado novamente. O navegador apenas muda o critério utilizado para classificar o risco.**
+
+---
+
+# 16. Existe uma API nessa aplicação?
+
+É importante fazer uma distinção.
+
+O projeto possui uma **camada de geração de dados**, mas não uma API REST tradicional como:
+
+```http
+GET /api/clientes
+```
+
+O fluxo atual é:
+
+```text
+Python
+   ↓
+Gera dashboard_data.json
+   ↓
+Insere os dados no template HTML
+   ↓
+Gera painel.html
+   ↓
+Navegador executa JavaScript
+```
+
+Portanto, o HTML é praticamente uma aplicação **self-contained**.
+
+Ele não precisa fazer uma requisição para buscar cada cliente.
+
+---
+
+# 17. Como seria com uma API REST tradicional?
+
+Se esse projeto fosse transformado em uma aplicação web real, poderíamos separar as responsabilidades:
+
+```text
+                 ┌─────────────────┐
+                 │     Modelo ML   │
+                 │  Decision Tree   │
+                 └────────┬────────┘
+                          │
+                          ▼
+                  ┌───────────────┐
+                  │     API       │
+                  │ .NET / Python │
+                  └───────┬───────┘
+                          │
+                    HTTP / JSON
+                          │
+                          ▼
+                  ┌───────────────┐
+                  │    Frontend   │
+                  │ React / Vue   │
+                  └───────────────┘
+```
+
+A API poderia possuir:
+
+```http
+GET /api/customers
+```
+
+Retornando:
+
+```json
+[
+    {
+        "customerId": 10001,
+        "risk": 0.87,
+        "age": 42,
+        "country": "Germany"
+    },
+    {
+        "customerId": 10002,
+        "risk": 0.12,
+        "age": 35,
+        "country": "France"
+    }
+]
+```
+
+E o frontend faria:
+
+```javascript
+const response = await fetch("/api/customers");
+
+const customers = await response.json();
+```
+
+Nesse cenário, a diferença principal seria:
+
+### Projeto atual
+
+```text
+Python → HTML
+```
+
+### Aplicação web tradicional
+
+```text
+Python/ML → API → Frontend
+```
+
+---
+
+# 18. Por que o projeto atual utiliza essa abordagem?
+
+Para um projeto de treinamento/apresentação, essa abordagem é bastante interessante porque simplifica a execução.
+
+O HTML pode ser gerado com os dados já incorporados.
+
+O próprio código explica:
+
+```python
+# Cada página é um HTML só:
+# o template vem de painel/ e os dados entram no lugar
+# do marcador, então o arquivo em models/ abre no navegador
+# sem servidor nem rede.
+```
+
+Assim, depois do treinamento, temos algo parecido com:
+
+```text
+models/
+├── churn_model.pkl
+├── clientes_em_risco.csv
+├── dashboard_data.json
+├── painel.html
+└── resumo.html
+```
+
+O usuário pode simplesmente abrir:
+
+```text
+painel.html
+```
+
+e visualizar o resultado.
+
+---
+
+# 19. Resumo do funcionamento completo
+
+```text
+                    DATASET
+                       │
+                       ▼
+                 ┌───────────┐
+                 │   Pandas  │
+                 └─────┬─────┘
+                       │
+                       ▼
+              Tratamento dos dados
+                       │
+                       ▼
+                Train / Test
+                       │
+                       ▼
+             Decision Tree Classifier
+                       │
+                       ▼
+             Probabilidade de Churn
+                       │
+          ┌────────────┼────────────┐
+          │            │            │
+          ▼            ▼            ▼
+       Modelo         CSV          JSON
+       .pkl        clientes       Dashboard
+          │                         │
+          │                         ▼
+          │                    Template HTML
+          │                         │
+          │                         ▼
+          │                    JavaScript
+          │                         │
+          └─────────────────────────┤
+                                    ▼
+                              DASHBOARD
+                                    │
+                     ┌──────────────┼──────────────┐
+                     ▼              ▼              ▼
+                  Clientes       Métricas       Risco
+                  em risco       do modelo      por cliente
+```
+
+## Conclusão
+
+A solução utiliza Machine Learning para transformar dados históricos de clientes em uma **probabilidade de churn**.
+
+O diferencial da aplicação é que ela não apenas apresenta o resultado do modelo, mas permite ao usuário explorar os dados através de um dashboard.
+
+A comunicação entre o modelo e a interface, no projeto atual, acontece através da **geração de JSON e incorporação desse JSON diretamente no HTML**.
+
+O trecho mais importante para entender essa comunicação é:
+
+### Python
+
+```python
+dash["risco_churn"] = model.predict_proba(X)[:, 1]
+```
+
+↓
+
+```python
+payload = json.dumps({
+    "clientes": linhas,
+    "metricas_teste": {...},
+    "importancias": {...}
+})
+```
+
+↓
+
+```python
+pagina = f.read().replace(
+    "/*DADOS*/null",
+    dados_js
+)
+```
+
+↓
+
+### HTML/JavaScript
+
+```javascript
+const RAW = /*DADOS*/null;
+
+const B = RAW.clientes;
+```
+
+Assim, o caminho dos dados é:
+
+```text
+Modelo ML
+   ↓
+Python
+   ↓
+JSON
+   ↓
+HTML
+   ↓
+JavaScript
+   ↓
+Tabela / Gráficos / Indicadores
+```
