@@ -80,8 +80,9 @@ bundle["model"].predict_proba(novos[bundle["features"]])[:, 1]
 ## O painel: `models/painel.html`
 
 O treino também monta um painel para o **Banco Avenida** (nome fictício sobre os dados do
-Kaggle). É um arquivo HTML só, com as notas de todos os 10.000 clientes embutidas —
-abre com duplo clique, sem servidor e sem internet.
+Kaggle). É um arquivo HTML só, com as notas de todos os 10.000 clientes embutidas: dá para
+servir em <http://localhost:8080> com o serviço `site`, ou simplesmente abrir com duplo
+clique — sem servidor e sem internet, funciona igual.
 
 O que dá para fazer nele:
 
@@ -103,14 +104,43 @@ no visual, edite o template e rode o treino de novo — o volume é montado, nã
 
 ## Como rodar
 
+São dois serviços: `trainer` treina e gera os artefatos, `site` serve o painel.
+
+**Treinar e subir o site de uma vez:**
+
+```bash
+docker compose up -d site
+```
+
+O `site` espera o `trainer` terminar bem antes de subir — treino que falha não vira página no ar.
+Quando voltar o prompt, o painel está em **<http://localhost:8080>**.
+
+**Só treinar,** sem subir servidor nenhum:
+
 ```bash
 docker compose run --rm trainer
 ```
 
-Os artefatos aparecem em `./models` na sua máquina (volume montado). Abra o
-`models/painel.html` no navegador para ver o resultado.
+Os artefatos aparecem em `./models` na sua máquina (volume montado) e o
+`models/painel.html` abre com duplo clique, sem precisar do servidor.
 
-Primeira execução baixa a imagem, instala as dependências e busca o dataset;
+**Só servir,** reaproveitando o último treino:
+
+```bash
+docker compose up -d --no-deps site
+```
+
+**Derrubar:**
+
+```bash
+docker compose down
+```
+
+A porta é publicada em `127.0.0.1:8080`, então o painel responde só na sua máquina e não fica
+exposto na rede local. Como a raiz do site é a pasta `models/`, o `clientes_em_risco.csv` também
+fica baixável em <http://localhost:8080/clientes_em_risco.csv>.
+
+Primeira execução baixa as imagens, instala as dependências e busca o dataset;
 as seguintes reaproveitam o cache da imagem e o CSV em `./data`.
 
 ## Experimentando
@@ -155,8 +185,9 @@ decorar a base e generalizar.
 | ---------------------- | ---------------------------------------------------------------------------------- |
 | `train_model.py`     | Pipeline completo: dataset → treino → avaliação → clientes em risco → painel. |
 | `painel/painel.html` | Template do painel do Banco Avenida, com `/*DADOS*/null` no lugar dos dados.      |
+| `painel/nginx.conf`  | Config do serviço `site`: raiz em `models/`, índice `painel.html`, sem cache.  |
 | `requirements.txt`   | pandas, scikit-learn, joblib, numpy.                                               |
 | `Dockerfile`         | Imagem`python:3.12-slim` com as dependências.                                   |
-| `docker-compose.yml` | Serviço`trainer` + volumes de `models/`, `data/`, `painel/` e do script.   |
+| `docker-compose.yml` | Serviços`trainer` (treino) e `site` (nginx na 8080) + os volumes.           |
 | `data/`              | Cache do CSV do dataset (ignorado no git).                                         |
 | `models/`            | Saída:`churn_model.pkl`, `clientes_em_risco.csv`, `dashboard_data.json` e `painel.html` (ignorados no git). |

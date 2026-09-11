@@ -11,3 +11,19 @@ services:
       - ./train_model.py:/app/train_model.py:ro
       # Template do painel: o treino injeta os dados e escreve models/painel.html
       - ./painel:/app/painel:ro
+
+  # Serve o painel gerado pelo trainer em http://localhost:8080
+  site:
+    image: nginx:alpine
+    container_name: churn-site
+    # Só na máquina local: 127.0.0.1 em vez de 0.0.0.0 mantém o painel fora da rede
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      # models/ vira a raiz do site — painel.html, e os CSVs ficam baixáveis
+      - ./models:/usr/share/nginx/html:ro
+      - ./painel/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    # Treina primeiro, sobe o site depois — só serve página se o treino terminou bem
+    depends_on:
+      trainer:
+        condition: service_completed_successfully
