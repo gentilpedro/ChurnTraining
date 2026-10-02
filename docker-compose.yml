@@ -12,6 +12,23 @@ services:
       # Template do painel: o treino injeta os dados e escreve models/painel.html
       - ./painel:/app/painel:ro
 
+  # Minimal API de consulta em http://localhost:8000 (docs em /docs)
+  api:
+    build: .
+    container_name: churn-api
+    command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      # Lê o modelo treinado; só leitura, quem escreve aqui é o trainer
+      - ./models:/app/models:ro
+      # As contas injetadas ficam em data/contas_injetadas.db e sobrevivem ao restart
+      - ./data:/app/data
+      - ./api:/app/api:ro
+    depends_on:
+      trainer:
+        condition: service_completed_successfully
+
   # Serve o painel gerado pelo trainer em http://localhost:8080
   site:
     image: nginx:alpine
