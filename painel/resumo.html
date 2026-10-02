@@ -181,9 +181,9 @@ td.cod{font-family:var(--mono);font-size:13px;color:var(--ink-2)}
 <section class="band">
   <div class="in">
     <p class="eyebrow">O resultado</p>
-    <h2>O que acontece com 2.000 clientes que o modelo nunca viu</h2>
-    <p class="sub">Estes clientes ficaram de fora do treino. É o teste honesto: o modelo dá a
-    nota sem nunca ter visto o desfecho.</p>
+    <h2>O que acontece com clientes que o modelo nunca viu</h2>
+    <p class="sub">Validação cruzada: cada cliente é pontuado por uma árvore treinada sem ele.
+    É o teste honesto: o modelo dá a nota sem nunca ter visto o desfecho.</p>
     <div class="stats" id="resultado"></div>
     <p class="remate" id="remate-res">—</p>
   </div>
@@ -246,8 +246,8 @@ td.cod{font-family:var(--mono);font-size:13px;color:var(--ink-2)}
       <div class="passo">
         <b>Passo 2</b>
         <h3>Separar treino e teste</h3>
-        <p>80% para aprender, 20% guardados para avaliar. A proporção de churn é mantida
-        nos dois lados.</p>
+        <p>10% das contas ficam guardadas para injetar depois na API. Os 90% treinam, e
+        a validação cruzada em 5 partes mede o modelo sem deixá-lo ver a resposta.</p>
       </div>
       <div class="passo">
         <b>Passo 3</b>

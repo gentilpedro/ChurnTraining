@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
-# Sobe a aplicação inteira: treina o modelo e publica o painel.
+# Sobe a aplicação inteira: treina o modelo, publica o painel e a API.
 #
 #   ./subir.sh              treina, sobe o site e abre o painel no navegador
 #   ./subir.sh --sem-abrir  idem, sem abrir o navegador
 #   ./subir.sh --rebuild    refaz a imagem antes (use ao mexer no requirements.txt)
-#   ./subir.sh --parar      derruba o site
+#   ./subir.sh --parar      derruba o site e a API
 #
 set -euo pipefail
 
@@ -14,6 +14,7 @@ cd "$(dirname "$0")"
 
 PORTA=8080
 URL="http://localhost:${PORTA}"
+API_URL="http://localhost:8000"
 
 # Abrir o painel é o padrão: quem roda isso quer ver a aplicação, não um prompt
 abrir=1
@@ -46,7 +47,7 @@ fi
 # --- Parar ----------------------------------------------------------------
 if [ "$parar" -eq 1 ]; then
   docker compose down
-  echo "Site derrubado."
+  echo "Site e API derrubados."
   exit 0
 fi
 
@@ -63,10 +64,13 @@ fi
 echo "==> Treinando o modelo"
 docker compose run --rm trainer
 
-# --- Site -----------------------------------------------------------------
+# --- Site e API -----------------------------------------------------------
+# --force-recreate nos dois: a API lê o modelo só na subida, e o nginx lê o
+# nginx.conf só na subida; reiniciar garante que os dois usam o que está no disco
 echo
-echo "==> Subindo o site"
-docker compose up -d --no-deps site
+echo "==> Subindo o site e a API"
+docker compose up -d --no-deps --force-recreate site
+docker compose up -d --no-deps --force-recreate api
 
 # Espera o nginx responder antes de dizer que está pronto
 if command -v curl >/dev/null 2>&1; then
@@ -77,6 +81,15 @@ if command -v curl >/dev/null 2>&1; then
   if ! curl -fsS -o /dev/null "$URL"; then
     echo "O site subiu mas não respondeu em ${URL}." >&2
     echo "Veja o que houve com: docker compose logs site" >&2
+    exit 1
+  fi
+  for _ in $(seq 1 30); do
+    if curl -fsS -o /dev/null "${API_URL}/saude" 2>/dev/null; then break; fi
+    sleep 0.5
+  done
+  if ! curl -fsS -o /dev/null "${API_URL}/saude"; then
+    echo "A API subiu mas não respondeu em ${API_URL}." >&2
+    echo "Veja o que houve com: docker compose logs api" >&2
     exit 1
   fi
 fi
@@ -105,5 +118,12 @@ echo "Aplicação no ar:"
 echo "  ${URL}               painel de retenção"
 echo "  ${URL}/contas.html   só a lista de contas em risco"
 echo "  ${URL}/resumo.html   resumo para apresentação"
+echo "  ${URL}/injetar.html  injetar contas na API pelo navegador"
+echo "  ${API_URL}/docs               Churn API (consulta interativa)"
+echo
+echo "Injetar as contas guardadas fora do treino:"
+echo "  ${URL}/injetar.html  e envie data/contas_10_porcento.csv"
+echo "  python cliente/injetar.py csv data/contas_novas.csv"
+echo "  python cliente/injetar.py            (menu)"
 echo
 echo "Para derrubar: ./subir.sh --parar"

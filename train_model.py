@@ -1,6 +1,7 @@
 import pandas as pd
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import (train_test_split, StratifiedKFold,
+                                     cross_val_predict)
 from sklearn.metrics import (accuracy_score, precision_score, recall_score,
                              f1_score, confusion_matrix)
 import joblib
@@ -21,6 +22,15 @@ os.makedirs(MODEL_DIR, exist_ok=True)
 # Onde o CSV do dataset fica guardado (baixado uma vez e reaproveitado)
 DATA_DIR = os.getenv("DATA_DIR", "data")
 DATA_PATH = os.getenv("DATA_PATH", os.path.join(DATA_DIR, "bank_customer_churn.csv"))
+# Contas separadas antes do treino: o modelo nunca as vê. Ficam guardadas para
+# serem injetadas depois na API, como se fossem contas novas chegando no banco.
+NOVAS_PATH = os.path.join(DATA_DIR, "contas_novas.csv")
+# O desfecho real dessas contas, à parte, para conferir as notas da API depois
+GABARITO_PATH = os.path.join(DATA_DIR, "contas_novas_gabarito.csv")
+# Os mesmos 10% inteiros, no formato da planilha original (com a coluna churn)
+SEPARADAS_PATH = os.path.join(DATA_DIR, "contas_10_porcento.csv")
+# Fração da base guardada fora do treino (0.10 -> treina com 90%)
+HOLDOUT = float(os.getenv("HOLDOUT", "0.10"))
 # Espelho público do Bank Customer Churn Dataset (Kaggle: gauravtopre)
 DATA_URL = os.getenv(
     "DATA_URL",
@@ -46,8 +56,17 @@ else:
     print(f"      Cache salvo em '{DATA_PATH}'.")
 
 # 2. Tratamento mínimo de dados
-df_clean = df.dropna().copy()
-customer_ids = df_clean["customer_id"]  # guardado pra identificar quem está em risco
+df_all = df.dropna().copy()
+
+# Separa as contas guardadas ANTES de qualquer coisa. random_state fixo: toda
+# execução guarda as mesmas contas, então elas nunca vazam para um treino futuro.
+df_clean, df_novas = train_test_split(
+    df_all, test_size=HOLDOUT, random_state=42, stratify=df_all["churn"])
+
+os.makedirs(DATA_DIR, exist_ok=True)
+df_novas.drop(columns=["churn"]).to_csv(NOVAS_PATH, index=False)
+df_novas[["customer_id", "churn"]].to_csv(GABARITO_PATH, index=False)
+df_novas.to_csv(SEPARADAS_PATH, index=False)
 
 # Target já vem binário na coluna 'churn': 1 = Cancelou, 0 = Ativo
 y = df_clean["churn"].astype(int)
@@ -60,17 +79,12 @@ X = pd.get_dummies(
     drop_first=True,
 )  # features/caracteristicas/atributos são as variáveis independentes
 
-print(f"[2/7] {len(df_clean)} clientes, {X.shape[1]} features, "
-      f"{y.mean() * 100:.1f}% de churn na base.")
+print(f"[2/7] {len(df_clean)} clientes para treino ({100 - HOLDOUT * 100:.0f}%), "
+      f"{X.shape[1]} features, {y.mean() * 100:.1f}% de churn.")
+print(f"      {len(df_novas)} contas guardadas fora do treino em '{NOVAS_PATH}' "
+      f"(desfecho em '{GABARITO_PATH}', completas em '{SEPARADAS_PATH}').")
 
-# 3. Divisão Treino e Teste
-# evita não decorar respostas
-# random_state -> determinístico
-# stratify -> mantém a proporção de churn nos dois lados
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42, stratify=y)
-
-# 4. Treinamento do Modelo
+# 3. Treinamento do Modelo
 # class_weight='balanced' -> só 20% da base cancelou; sem isso a árvore aprende
 # a chutar "fica" pra todo mundo e nunca sinaliza risco nenhum
 model = DecisionTreeClassifier(
@@ -79,21 +93,31 @@ model = DecisionTreeClassifier(
     class_weight="balanced",
     random_state=42,
 )
-model.fit(X_train, y_train)
+
+# 4. Avaliação por validação cruzada (5 partes)
+# O treino usa os 90% inteiros, então não sobra conjunto de teste separado. Em vez
+# disso, cada cliente recebe a nota de uma árvore treinada nas outras 4 partes:
+# toda nota abaixo vem de um modelo que nunca viu aquele cliente.
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+proba_oof = cross_val_predict(model, X, y, cv=cv, method="predict_proba")[:, 1]
+print("[3/7] Validação cruzada em 5 partes concluída.")
+
+# Modelo final: a mesma árvore treinada com os 90% inteiros — é ela que a API usa
+model.fit(X, y)
+print(f"[4/7] Modelo final treinado com {len(X)} clientes.")
 
 # 5. Avaliação — o que importa aqui é o RECALL da classe 1 (quantos dos que
 # realmente cancelaram o modelo conseguiu sinalizar antes)
-proba_test = model.predict_proba(X_test)[:, 1]
-pred_test = (proba_test >= THRESHOLD).astype(int)
+pred_oof = (proba_oof >= THRESHOLD).astype(int)
 
-tn, fp, fn, tp = confusion_matrix(y_test, pred_test).ravel()
-print(f"[5/7] Avaliação no conjunto de teste (threshold {THRESHOLD:.2f}):")
-print(f"      Acurácia:  {accuracy_score(y_test, pred_test) * 100:.2f}%")
-print(f"      Recall:    {recall_score(y_test, pred_test) * 100:.2f}%  "
+tn, fp, fn, tp = confusion_matrix(y, pred_oof).ravel()
+print(f"[5/7] Avaliação fora do treino (threshold {THRESHOLD:.2f}):")
+print(f"      Acurácia:  {accuracy_score(y, pred_oof) * 100:.2f}%")
+print(f"      Recall:    {recall_score(y, pred_oof) * 100:.2f}%  "
       f"(pegou {tp} dos {tp + fn} que cancelaram)")
-print(f"      Precisão:  {precision_score(y_test, pred_test, zero_division=0) * 100:.2f}%  "
+print(f"      Precisão:  {precision_score(y, pred_oof, zero_division=0) * 100:.2f}%  "
       f"(dos {tp + fp} sinalizados, {tp} cancelaram mesmo)")
-print(f"      F1:        {f1_score(y_test, pred_test) * 100:.2f}%")
+print(f"      F1:        {f1_score(y, pred_oof) * 100:.2f}%")
 print(f"      Falsos alarmes: {fp}   |   Escaparam: {fn}")
 
 # 6. Exportação dos artefatos
@@ -104,11 +128,10 @@ joblib.dump(
     MODEL_PATH,
 )
 
-# Pontua a base inteira e ranqueia quem tem mais chance de sair.
-# Obs.: as linhas usadas no treino recebem uma nota otimista — as métricas
-# confiáveis são as do passo 5, calculadas só no conjunto de teste.
+# Ranqueia quem tem mais chance de sair, usando a nota da validação cruzada:
+# a do modelo final seria otimista, porque ele treinou com esses mesmos clientes.
 risco = df_clean.copy()
-risco["risco_churn"] = model.predict_proba(X)[:, 1]
+risco["risco_churn"] = proba_oof
 risco = risco[risco["risco_churn"] >= THRESHOLD].sort_values(
     "risco_churn", ascending=False)
 
@@ -125,9 +148,9 @@ print(f"      {len(risco)} clientes acima do threshold; "
 # O painel refaz o corte de risco no navegador, então ele precisa da nota de
 # todo mundo — não só de quem passou do threshold — mais as métricas do passo 5.
 dash = df_clean.copy()
-dash["risco_churn"] = model.predict_proba(X)[:, 1]
-# Marca quem ficou de fora do treino: só essas linhas têm nota não-enviesada
-dash["teste"] = dash.index.isin(X_test.index)
+dash["risco_churn"] = proba_oof
+# Toda nota veio de uma árvore que não viu o cliente, então todos contam como teste
+dash["teste"] = True
 
 colunas_dash = ["customer_id", "risco_churn", "credit_score", "country",
                 "gender", "age", "tenure", "balance", "products_number",
@@ -150,11 +173,11 @@ payload = json.dumps(
         "n_clientes": len(dash),
         "taxa_churn_base": round(float(y.mean()), 4),
         "metricas_teste": {
-            "n": int(len(y_test)),
-            "acuracia": round(float(accuracy_score(y_test, pred_test)), 4),
-            "recall": round(float(recall_score(y_test, pred_test)), 4),
-            "precisao": round(float(precision_score(y_test, pred_test, zero_division=0)), 4),
-            "f1": round(float(f1_score(y_test, pred_test)), 4),
+            "n": int(len(y)),
+            "acuracia": round(float(accuracy_score(y, pred_oof)), 4),
+            "recall": round(float(recall_score(y, pred_oof)), 4),
+            "precisao": round(float(precision_score(y, pred_oof, zero_division=0)), 4),
+            "f1": round(float(f1_score(y, pred_oof)), 4),
             "tn": int(tn), "fp": int(fp), "fn": int(fn), "tp": int(tp),
         },
         # O quanto cada feature pesou nas decisões da árvore

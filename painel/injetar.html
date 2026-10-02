@@ -1,0 +1,339 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Injetar Contas</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --fundo:#f2f4f7; --papel:#fff; --linha:#e3e8ee; --trilho:#e9edf2;
+  --texto:#12161c; --texto-2:#5b6573; --risco:#d03b3b;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --fundo:#0c0f14; --papel:#161a21; --linha:#262d38; --trilho:#232a34;
+    --texto:#f0f3f7; --texto-2:#9aa5b3; --risco:#e66767;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --fundo:#0c0f14; --papel:#161a21; --linha:#262d38; --trilho:#232a34;
+  --texto:#f0f3f7; --texto-2:#9aa5b3; --risco:#e66767;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+body{background:var(--fundo);color:var(--texto);font-family:var(--sans);font-size:15px;line-height:1.5;margin:0}
+.pagina{max-width:860px;margin:0 auto;padding:40px 16px 60px}
+
+h1{font-size:26px;font-weight:600;letter-spacing:-.015em;margin:0}
+h2{font-size:17px;font-weight:600;margin:0}
+.resumo{color:var(--texto-2);font-size:15px;margin:8px 0 0}
+.resumo b{color:var(--texto);font-family:var(--mono);font-weight:600}
+.dica{color:var(--texto-2);font-size:13px;margin:4px 0 0}
+.dica code{font-family:var(--mono);font-size:12px}
+
+.bloco{margin-top:22px;background:var(--papel);border:1px solid var(--linha);border-radius:10px;padding:18px}
+.topo{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+
+.campos{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-top:14px}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--texto-2)}
+input,select{font-family:var(--sans);font-size:15px;color:var(--texto);background:var(--fundo);
+  border:1px solid var(--linha);border-radius:8px;padding:9px 11px;width:100%}
+input:focus,select:focus{outline:2px solid var(--risco);outline-offset:1px}
+input[type=file]{padding:8px;background:var(--papel)}
+
+.acoes{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+button{font-family:var(--sans);font-size:14px;font-weight:500;background:var(--papel);
+  border:1px solid var(--linha);border-radius:8px;padding:10px 16px;color:var(--texto);cursor:pointer}
+button:hover{border-color:var(--texto-2)}
+button.principal{background:var(--texto);color:var(--papel);border-color:var(--texto)}
+button.perigo{color:var(--risco)}
+button:disabled{opacity:.5;cursor:default}
+.check{flex-direction:row;align-items:center;gap:8px;font-size:14px;color:var(--texto)}
+.check input{width:auto}
+
+.aviso{margin-top:14px;font-size:14px;padding:10px 14px;border-radius:8px;background:var(--fundo)}
+.aviso:empty{display:none}
+.aviso.erro{color:var(--risco);background:var(--papel);border:1px solid var(--risco)}
+.aviso b{font-family:var(--mono);font-weight:600}
+
+.lista{margin-top:14px;border:1px solid var(--linha);border-radius:10px;overflow:hidden}
+.lista:empty{display:none}
+.conta{display:grid;grid-template-columns:1fr auto;gap:4px 18px;align-items:center;
+  padding:14px 18px;border-bottom:1px solid var(--linha)}
+.conta:last-child{border-bottom:none}
+.numero{font-family:var(--mono);font-size:15px;font-weight:500}
+.dados{font-size:13px;color:var(--texto-2);grid-column:1}
+.medida{grid-column:2;grid-row:1 / span 2;display:flex;align-items:center;gap:12px}
+.barra{width:84px;height:8px;border-radius:4px;background:var(--trilho);position:relative;flex:none}
+.barra i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--risco)}
+.conta.baixo .barra i{background:var(--texto-2)}
+.pct{font-family:var(--mono);font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;
+  color:var(--risco);width:52px;text-align:right}
+.conta.baixo .pct{color:var(--texto-2)}
+.vazio{padding:28px 18px;text-align:center;color:var(--texto-2)}
+.contagem{font-size:13px;color:var(--texto-2)}
+@media (max-width:520px){
+  .conta{grid-template-columns:1fr}
+  .medida{grid-column:1;grid-row:auto;margin-top:6px}
+}
+</style>
+
+<div class="pagina">
+  <h1>Injetar contas</h1>
+  <p class="resumo" id="status">Conectando na API…</p>
+
+  <!-- 1. Arquivo -->
+  <section class="bloco">
+    <h2>Enviar um arquivo CSV</h2>
+    <p class="dica">Mesmas colunas da planilha, por exemplo <code>data/contas_novas.csv</code>.
+      Se o arquivo tiver a coluna <code>churn</code> (como <code>data/contas_10_porcento.csv</code>),
+      a página também confere as notas com o que de fato aconteceu.</p>
+    <div class="acoes">
+      <input type="file" id="arquivo" accept=".csv,text/csv">
+      <button class="principal" id="enviar" type="button">Injetar arquivo</button>
+    </div>
+    <div class="aviso" id="aviso-arquivo"></div>
+  </section>
+
+  <!-- 2. Uma conta -->
+  <section class="bloco">
+    <h2>Digitar uma conta</h2>
+    <form id="form" autocomplete="off">
+      <div class="campos">
+        <label>Número da conta<input name="customer_id" type="number" min="1" required></label>
+        <label>Score de crédito<input name="credit_score" type="number" min="300" max="900" value="650" required></label>
+        <label>País<select name="country">
+          <option value="France">França</option><option value="Germany">Alemanha</option><option value="Spain">Espanha</option>
+        </select></label>
+        <label>Gênero<select name="gender">
+          <option value="Female">Feminino</option><option value="Male">Masculino</option>
+        </select></label>
+        <label>Idade<input name="age" type="number" min="18" max="110" value="40" required></label>
+        <label>Anos como cliente<input name="tenure" type="number" min="0" max="80" value="5" required></label>
+        <label>Saldo<input name="balance" type="number" min="0" step="0.01" value="0" required></label>
+        <label>Nº de produtos<input name="products_number" type="number" min="1" max="10" value="1" required></label>
+        <label>Tem cartão de crédito<select name="credit_card">
+          <option value="1">Sim</option><option value="0">Não</option>
+        </select></label>
+        <label>Conta ativa<select name="active_member">
+          <option value="1">Sim</option><option value="0">Não</option>
+        </select></label>
+        <label>Salário estimado<input name="estimated_salary" type="number" min="0" step="0.01" value="50000" required></label>
+      </div>
+      <div class="acoes">
+        <button class="principal" type="submit" data-rota="contas">Injetar conta</button>
+        <button type="submit" data-rota="prever">Só consultar, sem guardar</button>
+      </div>
+    </form>
+    <div class="aviso" id="aviso-form"></div>
+    <div class="lista" id="resultado-form"></div>
+  </section>
+
+  <!-- 3. Ranking -->
+  <section class="bloco">
+    <div class="topo">
+      <h2>Contas injetadas, por chance de sair</h2>
+      <div class="acoes" style="margin-top:0">
+        <label class="check"><input type="checkbox" id="so-risco" checked> Só em risco</label>
+        <button id="atualizar" type="button">Atualizar</button>
+        <button class="perigo" id="limpar" type="button">Apagar todas</button>
+      </div>
+    </div>
+    <div class="lista" id="ranking"></div>
+    <div class="acoes">
+      <button id="mais" type="button" hidden>Mostrar mais 50</button>
+      <span class="contagem" id="contagem"></span>
+    </div>
+  </section>
+</div>
+
+<script>
+const API = "/api";
+const CAMPOS = ["customer_id", "credit_score", "country", "gender", "age", "tenure",
+  "balance", "products_number", "credit_card", "active_member", "estimated_salary"];
+const TEXTO = new Set(["country", "gender"]);
+const LOTE = 1000;
+const nf = new Intl.NumberFormat("pt-BR");
+const PAIS = { France: "França", Germany: "Alemanha", Spain: "Espanha" };
+const $ = id => document.getElementById(id);
+
+let threshold = 0.5, limite = 50;
+
+async function chamar(caminho, opcoes = {}) {
+  const r = await fetch(API + caminho, {
+    headers: { "Content-Type": "application/json" }, ...opcoes,
+  });
+  const corpo = await r.json().catch(() => null);
+  if (!r.ok) throw new Error(erroLegivel(r.status, corpo));
+  return corpo;
+}
+
+// O FastAPI devolve 422 com a lista de campos inválidos; vira uma frase só
+function erroLegivel(status, corpo) {
+  if (status === 502 || status === 504) return "A API não está respondendo. Ela está no ar? (./subir.sh)";
+  const d = corpo && corpo.detail;
+  if (Array.isArray(d)) {
+    return d.slice(0, 3).map(e => {
+      // loc = ["body", <posição no lote>, <campo>]; a posição vira [n] para quem
+      // chamou trocar pela linha do arquivo (ou tirar, numa conta só)
+      const [i, ...campo] = e.loc.filter(p => p !== "body");
+      const onde = typeof i === "number" ? `[${i}] ${campo.join(".")}` : [i, ...campo].join(".");
+      return `${onde}: ${e.msg}`;
+    }).join(" · ");
+  }
+  return typeof d === "string" ? d : `Erro ${status} na API.`;
+}
+
+function linhaConta(c) {
+  const pct = Math.round(100 * c.risco_churn);
+  return `<div class="conta${c.em_risco ? "" : " baixo"}">
+    <span class="numero">${c.customer_id}</span>
+    <span class="dados">${c.age} anos · ${PAIS[c.country]} · ${c.products_number} produto${c.products_number > 1 ? "s" : ""} · saldo R$ ${nf.format(Math.round(c.balance))} · conta ${c.active_member ? "ativa" : "inativa"}${c.em_risco ? " · <b>em risco</b>" : ""}</span>
+    <span class="medida">
+      <span class="barra"><i style="width:${pct}%"></i></span>
+      <span class="pct">${pct}%</span>
+    </span>
+  </div>`;
+}
+
+function avisar(id, html, erro = false) {
+  $(id).className = "aviso" + (erro ? " erro" : "");
+  $(id).innerHTML = html;
+}
+
+async function status() {
+  try {
+    const s = await chamar("/saude");
+    threshold = s.threshold;
+    $("status").innerHTML = `API no ar. <b>${nf.format(s.contas_injetadas)}</b> contas injetadas até agora;
+      entra em risco quem passa de <b>${Math.round(100 * threshold)}%</b> de chance de sair.`;
+  } catch (e) {
+    $("status").textContent = e.message;
+  }
+}
+
+async function ranking() {
+  const so = $("so-risco").checked;
+  try {
+    const contas = await chamar(`/contas?so_em_risco=${so}&limite=${limite + 1}`);
+    const tem_mais = contas.length > limite;
+    const mostrar = contas.slice(0, limite);
+    $("ranking").innerHTML = mostrar.length
+      ? mostrar.map(linhaConta).join("")
+      : `<p class="vazio">${so ? "Nenhuma conta injetada está em risco." : "Nenhuma conta injetada ainda."}</p>`;
+    $("mais").hidden = !tem_mais;
+    $("contagem").textContent = mostrar.length ? `Mostrando ${nf.format(mostrar.length)}${tem_mais ? "+" : ""}.` : "";
+  } catch (e) {
+    $("ranking").innerHTML = `<p class="vazio">${e.message}</p>`;
+  }
+}
+
+// --- 1. CSV ---------------------------------------------------------------
+// O dataset não tem campos entre aspas, então separar por vírgula basta
+function lerCsv(texto) {
+  const linhas = texto.replace(/^﻿/, "").split(/\r?\n/).filter(l => l.trim());
+  const cab = linhas[0].split(",").map(c => c.trim());
+  const faltam = CAMPOS.filter(c => !cab.includes(c));
+  if (faltam.length) throw new Error(`Faltam colunas no arquivo: ${faltam.join(", ")}.`);
+  const idx = Object.fromEntries(cab.map((c, i) => [c, i]));
+  const temChurn = "churn" in idx;
+  const contas = [], gabarito = new Map();
+  linhas.slice(1).forEach(l => {
+    const v = l.split(",");
+    const conta = {};
+    for (const c of CAMPOS) {
+      const bruto = (v[idx[c]] ?? "").trim();
+      conta[c] = TEXTO.has(c) ? bruto : Number(bruto);
+    }
+    contas.push(conta);
+    if (temChurn) gabarito.set(conta.customer_id, Number(v[idx.churn]));
+  });
+  return { contas, gabarito: temChurn ? gabarito : null };
+}
+
+$("enviar").addEventListener("click", async () => {
+  const f = $("arquivo").files[0];
+  if (!f) return avisar("aviso-arquivo", "Escolha um arquivo CSV primeiro.", true);
+  $("enviar").disabled = true;
+  try {
+    const { contas, gabarito } = lerCsv(await f.text());
+    const pontuadas = [];
+    for (let i = 0; i < contas.length; i += LOTE) {
+      avisar("aviso-arquivo", `Enviando ${nf.format(Math.min(i + LOTE, contas.length))} de ${nf.format(contas.length)}…`);
+      const lote = contas.slice(i, i + LOTE);
+      try {
+        pontuadas.push(...await chamar("/contas", { method: "POST", body: JSON.stringify(lote) }));
+      } catch (e) {
+        // A mensagem do 422 aponta o índice dentro do lote; converto para a linha do arquivo
+        throw new Error(e.message.replace(/\[(\d+)\]/g, (_, n) => `linha ${i + Number(n) + 2},`));
+      }
+    }
+    const risco = pontuadas.filter(c => c.em_risco).length;
+    let html = `<b>${nf.format(pontuadas.length)}</b> contas injetadas; <b>${nf.format(risco)}</b> ficaram em risco.`;
+
+    if (gabarito) {
+      let vp = 0, fp = 0, fn = 0;
+      for (const c of pontuadas) {
+        const saiu = gabarito.get(c.customer_id) === 1;
+        if (c.em_risco && saiu) vp++;
+        else if (c.em_risco) fp++;
+        else if (saiu) fn++;
+      }
+      const recall = vp + fn ? vp / (vp + fn) : 0;
+      const precisao = vp + fp ? vp / (vp + fp) : 0;
+      html += `<br>Conferindo com a coluna <code>churn</code>: o modelo pegou <b>${vp}</b> dos <b>${vp + fn}</b> que saíram
+        (recall <b>${Math.round(100 * recall)}%</b>). Dos ${risco} sinalizados, ${vp} saíram mesmo
+        (precisão <b>${Math.round(100 * precisao)}%</b>).`;
+    }
+    avisar("aviso-arquivo", html);
+    limite = 50;
+    await Promise.all([status(), ranking()]);
+  } catch (e) {
+    avisar("aviso-arquivo", e.message, true);
+  } finally {
+    $("enviar").disabled = false;
+  }
+});
+
+// --- 2. Uma conta ---------------------------------------------------------
+$("form").addEventListener("submit", async ev => {
+  ev.preventDefault();
+  const rota = ev.submitter?.dataset.rota || "contas";
+  const dados = new FormData(ev.target);
+  const conta = Object.fromEntries(CAMPOS.map(c => [c, TEXTO.has(c) ? dados.get(c) : Number(dados.get(c))]));
+  try {
+    const [c] = await chamar("/" + rota, { method: "POST", body: JSON.stringify([conta]) });
+    $("resultado-form").innerHTML = linhaConta(c);
+    avisar("aviso-form", rota === "contas"
+      ? `Conta <b>${c.customer_id}</b> guardada${c.em_risco ? " e está em risco" : ""}.`
+      : `Só consulta: a conta <b>${c.customer_id}</b> não foi guardada.`);
+    if (rota === "contas") await Promise.all([status(), ranking()]);
+  } catch (e) {
+    $("resultado-form").innerHTML = "";
+    avisar("aviso-form", e.message.replace(/\[\d+\] /g, ""), true);
+  }
+});
+
+// --- 3. Ranking -----------------------------------------------------------
+$("so-risco").addEventListener("change", () => { limite = 50; ranking(); });
+$("atualizar").addEventListener("click", () => { status(); ranking(); });
+$("mais").addEventListener("click", () => { limite += 50; ranking(); });
+$("limpar").addEventListener("click", async () => {
+  if (!confirm("Apagar todas as contas injetadas?")) return;
+  try {
+    const r = await chamar("/contas", { method: "DELETE" });
+    avisar("aviso-arquivo", `<b>${nf.format(r.apagadas)}</b> contas apagadas.`);
+  } catch (e) {
+    avisar("aviso-arquivo", e.message, true);
+  }
+  limite = 50;
+  await Promise.all([status(), ranking()]);
+});
+
+status();
+ranking();
+</script>
