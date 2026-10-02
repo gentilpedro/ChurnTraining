@@ -4,8 +4,11 @@
 Projeto de **treinamento de Machine Learning** para previsão de churn (Bank Customer Churn Dataset).
 O modelo aprende com os clientes que **já saíram** do banco e usa esse padrão para apontar,
 entre os clientes atuais, quais têm mais chance de sair.
-Sem API e sem servidor: o treino termina gerando um painel HTML autocontido com os dados já
-embutidos. Roda inteiramente em Docker, nada de Python instalado na máquina.
+O treino usa 90% da base e guarda os outros 10% para serem injetados depois, como contas novas.
+Termina gerando um painel HTML autocontido e sobe uma Minimal API (FastAPI) que pontua contas
+novas; a página `injetar.html` (no navegador) e o programa `cliente/injetar.py` injetam contas
+nela e mostram quais têm mais chance de sair.
+Treino, painel e API rodam em Docker.
 
 ## O dataset
 
@@ -38,8 +41,10 @@ Se preferir o arquivo oficial, baixe do Kaggle e salve como `./data/bank_custome
 1. Carrega o dataset (cache local em `data/`, ou baixa na primeira vez).
 2. Descarta linhas nulas e separa `customer_id` do conjunto de features.
 3. Transforma `country` e `gender` em colunas numéricas (one-hot) — 11 features no total.
-4. Separa treino/teste (80/20, `random_state=42`, estratificado pelo churn).
-5. Treina uma Árvore de Decisão com `class_weight="balanced"` e avalia no conjunto de teste.
+4. Guarda 10% das contas em `data/contas_novas.csv` (fora do treino, para injetar na API) e,
+   inteiras com a coluna `churn`, em `data/contas_10_porcento.csv`;
+   treina com os 90% restantes; a avaliação é por validação cruzada em 5 partes.
+5. Treina uma Árvore de Decisão com `class_weight="balanced"` e avalia por validação cruzada (5 partes).
 6. Exporta o modelo em `models/churn_model.pkl` e a lista de clientes em risco em
    `models/clientes_em_risco.csv`.
 7. Pontua a base inteira em `models/dashboard_data.json` e injeta esses dados em cada template
@@ -67,8 +72,8 @@ threshold, do maior para o menor:
 | demais colunas  | Os dados do cliente, para entender o motivo do alerta.       |
 | `churn`       | O que de fato aconteceu no dataset — serve de conferência. |
 
-> As linhas que entraram no treino recebem nota otimista. As métricas confiáveis são as do
-> passo 5, calculadas só no conjunto de teste.
+> As notas vêm da validação cruzada: nenhum cliente é pontuado por uma árvore que o viu no
+> treino. As métricas do passo 5 são calculadas sobre essas mesmas notas.
 
 O `.pkl` guarda um dicionário com `model`, `features` e `threshold` — a ordem das colunas do
 one-hot precisa ser a mesma na hora de pontuar clientes novos:
@@ -97,10 +102,10 @@ O que dá para fazer nele:
   `customer_id`, ordenação por qualquer coluna e filtros de país e atividade.
 - **Ver onde o churn se concentra** por faixa etária, número de produtos, país, uso da conta,
   saldo e tempo de casa — taxa real do histórico, não previsão.
-- **Ligar “só quem ficou fora do treino”**, que restringe a carteira aos 2.000 clientes do
-  conjunto de teste. É a visão sem a nota otimista das linhas de treino.
+- **Ver os 9.000 clientes do treino com nota honesta**: cada nota vem da validação cruzada,
+  de uma árvore que não viu aquele cliente.
 
-As métricas do modelo no painel são sempre calculadas no conjunto de teste e não respondem aos
+As métricas do modelo no painel são calculadas sobre essas notas e não respondem aos
 filtros de país, atividade ou busca — só ao corte.
 
 ### `models/resumo.html` — a versão de apresentação
@@ -112,7 +117,7 @@ nenhum, com número grande e uma ideia por faixa:
 1. **A base** — 10.000 clientes, 2.037 cancelamentos, 20,4% de churn.
 2. **Por que acurácia engana** — o espantalho (“ninguém sai”, 79,6% de acurácia, 0 clientes
    avisados) lado a lado com a árvore (76,1% de acurácia, 319 dos 407 avisados).
-3. **O resultado** — recall, alcançados, escapados e falsos alarmes no conjunto de teste.
+3. **O resultado** — recall, alcançados, escapados e falsos alarmes na validação cruzada.
 4. **Onde o churn se concentra** — dez grupos ranqueados contra a média da base.
 5. **No que a árvore se apoia** — as seis características de maior peso.
 6. **Os dez mais em risco** — só clientes de fora do treino, para a coluna de desfecho ser
@@ -212,6 +217,7 @@ Variáveis de ambiente disponíveis:
 | Variável     | Padrão                          | Papel                                                                                      |
 | ------------- | -------------------------------- | ------------------------------------------------------------------------------------------ |
 | `THRESHOLD` | `0.5`                          | Corte de probabilidade. Mais baixo = sinaliza mais gente (mais recall, mais falso alarme). |
+| `HOLDOUT`   | `0.10`                         | Fração guardada fora do treino em `data/contas_novas.csv`. `0.10` = treina com 90%.       |
 | `RISK_TOP`  | `200`                          | Quantos clientes de maior risco exportar no CSV.                                           |
 | `MODEL_DIR` | `models`                       | Diretório de saída dos artefatos.                                                        |
 | `DATA_DIR`  | `data`                         | Pasta do cache do CSV (usada só para montar o`DATA_PATH` padrão).                      |
@@ -236,9 +242,12 @@ decorar a base e generalizar.
 | `train_model.py`     | Pipeline completo: dataset → treino → avaliação → clientes em risco → painel.                                  |
 | `painel/painel.html` | Template do painel completo, com`/*DADOS*/null` no lugar dos dados.                                                |
 | `painel/resumo.html` | Template da versão de apresentação, mesmo marcador e mesmos dados.                                                |
-| `painel/nginx.conf`  | Config do serviço`site`: raiz em `models/`, índice `painel.html`, sem cache.                                 |
-| `requirements.txt`   | pandas, scikit-learn, joblib, numpy.                                                                                 |
+| `painel/injetar.html`| Página para injetar contas na API pelo navegador (CSV ou digitadas) e ver o ranking. |
+| `painel/nginx.conf`  | Config do serviço`site`: raiz em `models/`, índice `painel.html`, sem cache, `/api/` repassado para a API. |
+| `api/main.py`        | Minimal API (FastAPI): pontua e guarda contas novas, ranking de risco.  |
+| `cliente/injetar.py` | Programa para injetar contas na API (CSV ou digitadas) e ver o ranking. |
+| `requirements.txt`   | pandas, scikit-learn, joblib, numpy, fastapi, uvicorn.                                                                                 |
 | `Dockerfile`         | Imagem`python:3.12-slim` com as dependências.                                                                     |
-| `docker-compose.yml` | Serviços`trainer` (treino) e `site` (nginx na 8080) + os volumes.                                               |
-| `data/`              | Cache do CSV do dataset (ignorado no git).                                                                           |
+| `docker-compose.yml` | Serviços`trainer` (treino), `site` (nginx na 8080) e `api` (FastAPI na 8000).                                               |
+| `data/`              | CSV do dataset, contas guardadas + gabarito e o SQLite das contas injetadas (ignorados no git).                                                                           |
 | `models/`            | Saída:`churn_model.pkl`, `clientes_em_risco.csv`, `dashboard_data.json` e `painel.html` (ignorados no git). |

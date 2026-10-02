@@ -115,24 +115,34 @@ model = DecisionTreeClassifier(
 
 O `class_weight="balanced"` é importante porque existe uma diferença entre a quantidade de clientes que permaneceram e a quantidade que cancelaram.
 
-O modelo também utiliza:
+A base é dividida assim:
 
 ```text
-80% → treinamento
-20% → teste
+90% → treinamento  (9.000 clientes)
+10% → guardados    (1.000 contas que o modelo nunca vê)
 ```
 
-Essa divisão é feita através de:
+Os 10% são separados **antes de tudo** e gravados em `data/contas_novas.csv` (sem a coluna
+`churn`) e `data/contas_novas_gabarito.csv` (só `customer_id` e `churn`). As mesmas 1.000 contas
+também saem inteiras, no formato da planilha original, em `data/contas_10_porcento.csv`. Elas
+servem para serem injetadas depois na API, como contas novas chegando no banco:
 
 ```python
-X_train, X_test, y_train, y_test = train_test_split(
-    X,
-    y,
-    test_size=0.2,
-    random_state=42,
-    stratify=y
-)
+df_clean, df_novas = train_test_split(
+    df_all, test_size=HOLDOUT, random_state=42, stratify=df_all["churn"])
 ```
+
+Como o treino usa os 90% inteiros, a avaliação é feita por **validação cruzada em 5 partes**:
+cada cliente recebe a nota de uma árvore treinada nas outras 4 partes. Depois, o modelo final
+é treinado com os 90% e salvo para a API:
+
+```python
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+proba_oof = cross_val_predict(model, X, y, cv=cv, method="predict_proba")[:, 1]
+model.fit(X, y)
+```
+
+A fração guardada pode ser mudada com a variável `HOLDOUT` (padrão `0.10`).
 
 ---
 
@@ -206,7 +216,7 @@ Isso permite controlar o equilíbrio entre:
 
 Essa é uma das partes mais interessantes do projeto.
 
-O sistema **não possui uma API HTTP tradicional** para buscar os clientes.
+O painel **não usa a API** para buscar os clientes (a API é para contas novas, veja a seção 16).
 
 Em vez disso, o Python treina o modelo e gera arquivos que serão utilizados pelo HTML.
 
@@ -252,7 +262,7 @@ Depois de treinar o modelo, o código calcula a probabilidade de churn de todos 
 ```python
 dash = df_clean.copy()
 
-dash["risco_churn"] = model.predict_proba(X)[:, 1]
+dash["risco_churn"] = proba_oof
 ```
 
 Aqui acontece algo importante.
@@ -602,107 +612,86 @@ Ou seja:
 
 ---
 
-# 16. Existe uma API nessa aplicação?
+# 16. A API de consulta
 
-É importante fazer uma distinção.
+Além do painel, o projeto tem uma **Minimal API em FastAPI** (`api/main.py`) que carrega o
+`churn_model.pkl` e pontua contas novas. Ela sobe junto com o painel pelo `./subir.sh`, em
+**http://localhost:8000**, com documentação interativa em **http://localhost:8000/docs**.
 
-O projeto possui uma **camada de geração de dados**, mas não uma API REST tradicional como:
+| Método   | Rota                  | O que faz                                                               |
+| -------- | --------------------- | ----------------------------------------------------------------------- |
+| `GET`    | `/saude`              | Status, threshold, features do modelo e quantas contas foram injetadas. |
+| `POST`   | `/prever`             | Só consulta: devolve a nota das contas enviadas, sem guardar.           |
+| `POST`   | `/contas`             | Pontua e **guarda** as contas (até 5.000 por requisição).               |
+| `GET`    | `/contas`             | Ranking das contas injetadas, da maior chance de sair para a menor.     |
+| `GET`    | `/contas/{id}`        | A nota de uma conta injetada.                                           |
+| `DELETE` | `/contas`             | Apaga as contas injetadas.                                              |
 
-```http
-GET /api/clientes
+`GET /contas` aceita `so_em_risco` (padrão `true`) e `limite` (padrão `50`).
+
+Cada conta segue as colunas do dataset, sem o `churn`:
+
+```json
+[{
+  "customer_id": 15634602, "credit_score": 619, "country": "France",
+  "gender": "Female", "age": 42, "tenure": 2, "balance": 0.0,
+  "products_number": 1, "credit_card": 1, "active_member": 1,
+  "estimated_salary": 101348.88
+}]
 ```
 
-O fluxo atual é:
+E volta com a nota:
 
-```text
-Python
-   ↓
-Gera dashboard_data.json
-   ↓
-Insere os dados no template HTML
-   ↓
-Gera painel.html
-   ↓
-Navegador executa JavaScript
+```json
+[{ "customer_id": 15634602, "...": "...", "risco_churn": 0.8123, "em_risco": true }]
 ```
 
-Portanto, o HTML é praticamente uma aplicação **self-contained**.
+A API aplica o mesmo one-hot do treino e reordena as colunas pela lista `features` salva no
+`.pkl`, então uma conta sozinha é pontuada igual a um lote. Valores fora do esperado
+(país desconhecido, idade negativa, `credit_card` diferente de 0/1) são recusados com 422.
 
-Ele não precisa fazer uma requisição para buscar cada cliente.
+As contas injetadas ficam em `data/contas_injetadas.db` (SQLite) e sobrevivem a reinícios. Um
+`customer_id` repetido substitui o anterior.
+
+> O modelo é lido na subida da API. O `./subir.sh` recria a API depois de cada treino; se
+> treinar na mão, rode `docker compose restart api`.
 
 ---
 
-# 17. Como seria com uma API REST tradicional?
+# 17. Injetar contas: página web e programa
 
-Se esse projeto fosse transformado em uma aplicação web real, poderíamos separar as responsabilidades:
+**Pelo navegador:** `http://localhost:8080/injetar.html`. A página fala com a API pelo próprio
+nginx (`/api/...` é repassado para o serviço `api`), então não precisa de CORS. Nela dá para:
 
-```text
-                 ┌─────────────────┐
-                 │     Modelo ML   │
-                 │  Decision Tree   │
-                 └────────┬────────┘
-                          │
-                          ▼
-                  ┌───────────────┐
-                  │     API       │
-                  │ .NET / Python │
-                  └───────┬───────┘
-                          │
-                    HTTP / JSON
-                          │
-                          ▼
-                  ┌───────────────┐
-                  │    Frontend   │
-                  │ React / Vue   │
-                  └───────────────┘
+- enviar um CSV com as colunas da planilha — se ele tiver a coluna `churn`, como
+  `data/contas_10_porcento.csv`, a página já confere as notas e mostra recall e precisão;
+- digitar uma conta e injetar, ou só consultar a nota sem guardar;
+- ver o ranking das contas injetadas e apagar todas.
+
+**Pelo terminal:** `cliente/injetar.py` conversa com a API. Usa só a biblioteca padrão do Python, então roda na
+sua máquina sem `pip install`:
+
+```bash
+python cliente/injetar.py                                  # menu interativo
+python cliente/injetar.py csv data/contas_novas.csv        # injeta um CSV inteiro
+python cliente/injetar.py nova                             # digita uma conta na mão
+python cliente/injetar.py ranking --limite 20              # contas em risco
+python cliente/injetar.py ranking --todas                  # todas as injetadas
+python cliente/injetar.py conta 15634602                   # nota de uma conta
+python cliente/injetar.py conferir                         # compara com o desfecho real
+python cliente/injetar.py limpar                           # apaga as injetadas
 ```
 
-A API poderia possuir:
+O fluxo para usar os 10% guardados:
 
-```http
-GET /api/customers
-```
+1. `./subir.sh` — treina com os 90% e sobe painel e API.
+2. `python cliente/injetar.py csv data/contas_novas.csv` — injeta as 1.000 contas e mostra as de
+   maior risco.
+3. `python cliente/injetar.py conferir` — cruza as notas com `contas_novas_gabarito.csv` e mostra
+   recall e precisão em contas que o modelo realmente nunca viu.
 
-Retornando:
-
-```json
-[
-    {
-        "customerId": 10001,
-        "risk": 0.87,
-        "age": 42,
-        "country": "Germany"
-    },
-    {
-        "customerId": 10002,
-        "risk": 0.12,
-        "age": 35,
-        "country": "France"
-    }
-]
-```
-
-E o frontend faria:
-
-```javascript
-const response = await fetch("/api/customers");
-
-const customers = await response.json();
-```
-
-Nesse cenário, a diferença principal seria:
-
-### Projeto atual
-
-```text
-Python → HTML
-```
-
-### Aplicação web tradicional
-
-```text
-Python/ML → API → Frontend
-```
+Qualquer CSV com as colunas do dataset serve (a coluna `churn`, se existir, é ignorada). Para
+apontar para outra API: `--api http://host:porta` ou a variável `CHURN_API`.
 
 ---
 
@@ -799,7 +788,7 @@ O trecho mais importante para entender essa comunicação é:
 ### Python
 
 ```python
-dash["risco_churn"] = model.predict_proba(X)[:, 1]
+dash["risco_churn"] = proba_oof
 ```
 
 ↓
