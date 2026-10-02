@@ -4,6 +4,13 @@ models/*.csv
 models/*.json
 models/*.html
 
+# Dataset baixado/cacheado, contas guardadas e banco das contas injetadas
+data/*.csv
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+
 # Ambientes virtuais Python
 .venv/
 venv/
@@ -14,15 +21,26 @@ env/
 __pycache__/
 *.py[cod]
 *$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # Variáveis de ambiente
 .env
-.env.local
+.env.*
+!.env.example
 
-# IDEs e editores
+# Logs
+*.log
+
+# IDEs, editores e ferramentas locais
 .vscode/
 .idea/
 *.swp
+.claude/settings.local.json
+.impeccable/
 
-# Dataset baixado/cacheado
-data/*.csv
+# Arquivos do sistema operacional
+.DS_Store
+Thumbs.db
+desktop.ini
